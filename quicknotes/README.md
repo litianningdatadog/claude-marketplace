@@ -67,7 +67,9 @@ cp ~/.claude/skills/quicknotes/commands/qn.md ~/.claude/commands/qn.md
 
 ```bash
 qn remember to rotate the API creds       # capture (default — no verb)
-qn add list the migration steps           # force-capture text that starts with a verb word
+qn buy milk #groceries #errands           # inline tags (quote in a raw shell: "…#groceries")
+qn deploy the service --tag ops --tag urgent   # tags via flag (shell-safe, no quoting)
+qn add list the migration steps #planning # force-capture (text starts with a verb word)
 qn list [--project P] [--tag T]
 qn search postgres
 qn show deploy                            # full detail: labeled metadata block + body + refs

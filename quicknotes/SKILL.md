@@ -30,15 +30,21 @@ another terminal (see README) — same store, no Claude round-trip.
 Capture is frictionless: anything that isn't a management verb is the note. Run:
 
 ```bash
-python3 ~/.claude/skills/quicknotes/scripts/qn.py <the note text>
+python3 ~/.claude/skills/quicknotes/scripts/qn.py <the note text> [#tag …] [--tag T]
 ```
 
-Then confirm the id + title back to the user in one line. Enrichment guidance:
+Tags can be set at capture two ways: **inline `#hashtags`** in the text (stripped from the
+body, stored as tags) or repeated **`--tag T`** flags. Both are normalized (leading `#`
+dropped, lowercased, spaces→`-`). Note: in a raw shell, an unquoted `#` is a comment — inside
+Claude/`/qn` it's fine, but when guiding shell use, prefer `--tag` or quote the text.
+
+Then confirm the id + title (and any tags) back in one line. Enrichment guidance:
 - The script auto-fills date, `project`, `cwd`, `branch`, and derives a `title` from the first
-  line. You may **suggest 1–3 tags** inferred from the text/project and set them with
-  `qn update <id> --tag <t>` — but keep capture itself instant; don't block on tagging.
+  line. You may **suggest 1–3 tags** inferred from the text/project (pass them as `#tag` or
+  `--tag`) — but keep capture instant; don't block on tagging.
 - If the user states a time ("by Friday", "tomorrow 5pm"), convert it to an ISO-8601 UTC
-  instant and pass it through an update: `qn update <id> --due 2026-06-12T17:00:00Z`.
+  instant via an update: `qn update <id> --due 2026-06-12T17:00:00Z`.
+- `update` accepts `#hashtags` and `--tag` too; both **replace** the note's tag list.
 
 ## Manage
 

@@ -59,6 +59,39 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(reloaded["body"], "line one: with colon\nmore")
 
 
+class TagTests(unittest.TestCase):
+    def test_normalize_tag(self):
+        self.assertEqual(ns.normalize_tag("#DB"), "db")
+        self.assertEqual(ns.normalize_tag("Machine Learning"), "machine-learning")
+        self.assertEqual(ns.normalize_tag("  #Foo Bar  "), "foo-bar")
+
+    def test_normalize_tags_dedupes_preserving_order(self):
+        self.assertEqual(ns.normalize_tags(["#DB", "db", "perf"]), ["db", "perf"])
+
+    def test_extract_hashtags(self):
+        cleaned, tags = ns.extract_hashtags("buy milk #groceries #errands")
+        self.assertEqual(cleaned, "buy milk")
+        self.assertEqual(tags, ["groceries", "errands"])
+
+    def test_extract_hashtags_ignores_midword_hash(self):
+        # `C#` (no preceding space) is not a tag.
+        cleaned, tags = ns.extract_hashtags("learn C# basics")
+        self.assertEqual(tags, [])
+        self.assertEqual(cleaned, "learn C# basics")
+
+    def test_capture_normalizes_tags(self):
+        h = home()
+        n = ns.capture("x", home=h, now=DT, tags=["#DB", "Machine Learning", "db"],
+                       cwd="/x/p", project="p", branch=None, rand="0000")
+        self.assertEqual(n["tags"], ["db", "machine-learning"])
+
+    def test_update_normalizes_tags(self):
+        h = home()
+        n = ns.capture("x", home=h, now=DT, cwd="/x/p", project="p", branch=None, rand="0000")
+        up = ns.update(h, n["id"], now=DT, tags=["#Urgent", "Back End"])
+        self.assertEqual(up["tags"], ["urgent", "back-end"])
+
+
 class ListSearchTests(unittest.TestCase):
     def _seed(self):
         h = home()

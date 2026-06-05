@@ -81,6 +81,34 @@ class CLITests(unittest.TestCase):
         self.assertIn("db", out)
         self.assertIn("pgbouncer pool size", out)  # body present
 
+    def test_capture_inline_hashtags(self):
+        code, out = self.run_cli(["buy", "milk", "#groceries", "#Errands"])
+        self.assertEqual(code, 0)
+        note = ns.list_notes(self.home)[0]
+        self.assertEqual(note["title"], "buy milk")          # hashtags stripped from text
+        self.assertEqual(note["tags"], ["groceries", "errands"])  # normalized
+
+    def test_capture_tag_flag(self):
+        self.run_cli(["deploy", "service", "--tag", "Ops"])
+        self.assertEqual(ns.list_notes(self.home)[0]["tags"], ["ops"])
+
+    def test_capture_combines_flag_and_inline(self):
+        self.run_cli(["x", "#a", "--tag", "b"])
+        self.assertEqual(set(ns.list_notes(self.home)[0]["tags"]), {"a", "b"})
+
+    def test_add_supports_hashtags(self):
+        self.run_cli(["add", "list", "the", "steps", "#planning"])
+        note = ns.list_notes(self.home)[0]
+        self.assertEqual(note["title"], "list the steps")
+        self.assertEqual(note["tags"], ["planning"])
+
+    def test_update_inline_hashtag(self):
+        self.run_cli(["fix", "the", "deploy"])
+        nid = ns.list_notes(self.home)[0]["id"]
+        code, _ = self.run_cli(["update", nid, "#urgent"])
+        self.assertEqual(code, 0)
+        self.assertEqual(ns.get(self.home, nid)["tags"], ["urgent"])
+
     def test_search(self):
         self.run_cli(["postgres", "connection", "pool"])
         code, out = self.run_cli(["search", "postgres"])

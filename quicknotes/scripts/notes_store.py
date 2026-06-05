@@ -46,6 +46,35 @@ def new_id(now: datetime | None = None, rand: str | None = None) -> str:
     return now.strftime("%Y%m%d-%H%M%S-") + suffix
 
 
+# --- tags --------------------------------------------------------------------------------
+
+# A hashtag: `#token` at the start of a word (so `C#` / `issue#5` mid-word don't match).
+_HASHTAG = re.compile(r"(?<![^\s])#([A-Za-z0-9_-]+)")
+
+
+def normalize_tag(tag: str) -> str:
+    """Canonical tag form: drop leading '#', lowercase, collapse whitespace to '-'."""
+    t = tag.strip().lstrip("#").strip().lower()
+    return re.sub(r"\s+", "-", t)
+
+
+def normalize_tags(tags) -> list[str]:
+    out, seen = [], set()
+    for t in tags or []:
+        n = normalize_tag(t)
+        if n and n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out
+
+
+def extract_hashtags(text: str) -> tuple[str, list[str]]:
+    """Split `#hashtags` out of free text. Returns (text_without_tags, raw_tags)."""
+    tags = _HASHTAG.findall(text)
+    cleaned = re.sub(r"\s{2,}", " ", _HASHTAG.sub("", text)).strip()
+    return cleaned, tags
+
+
 # --- git/project metadata (best-effort; never raise) -------------------------------------
 
 def _git(cwd: str, *args: str) -> str | None:
@@ -139,7 +168,7 @@ def capture(text: str, home: Path | None = None, now: datetime | None = None,
         "created": _iso(now), "updated": _iso(now),
         "priority": priority,
         "project": project, "cwd": str(cwd), "branch": branch,
-        "tags": list(tags or []), "due": due, "refs": [],
+        "tags": normalize_tags(tags), "due": due, "refs": [],
     }
     write_note(home, note, body)
     note["body"] = body
@@ -221,6 +250,8 @@ def update(home: Path, nid: str, now: datetime | None = None, body: str | None =
     note = get(home, nid)
     if not note:
         return None
+    if "tags" in changes:
+        changes["tags"] = normalize_tags(changes["tags"])
     for k, v in changes.items():
         if k in _EDITABLE:
             note[k] = v

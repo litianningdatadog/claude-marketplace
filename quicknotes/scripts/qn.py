@@ -4,13 +4,13 @@ quicknotes CLI — capture and manage quick notes.
 
 Capture is the default: any input not starting with a reserved verb becomes a note.
 
-    qn <free text>                 capture a note (DEFAULT)
-    qn add <free text>             force capture (when text starts with a verb word)
+    qn <free text> [#tag …] [--tag T]   capture a note (DEFAULT)
+    qn add <free text> [#tag …]         force capture (when text starts with a verb word)
     qn list [--project P] [--tag T]
     qn search <query>
     qn show   <id|fuzzy>
     qn done   <id|fuzzy>           complete a note (DELETES it from disk)
-    qn update <id|fuzzy> [--title T] [--tag T ...] [--priority P] [--due ISO] [body...]
+    qn update <id|fuzzy> [--title T] [--tag T ...] [#tag …] [--priority P] [--due ISO] [body...]
     qn due                         notes past their due time
     qn here                        notes for the current project/dir
     qn ref <id|fuzzy> <id|fuzzy>   link two notes
@@ -67,12 +67,16 @@ def _resolve_or_report(home, ref):
 
 
 def cmd_capture(words, home):
-    text = " ".join(words).strip()
-    if not text:
-        print("Nothing to capture. Usage: qn <note text>")
+    opts, rest = _extract_opts(words, {"--tag"})
+    text, inline_tags = ns.extract_hashtags(" ".join(rest).strip())
+    text = text.strip()
+    tags = (opts.get("--tag") or []) + inline_tags
+    if not text and not tags:
+        print("Nothing to capture. Usage: qn <note text> [#tag …] [--tag T]")
         return 1
-    note = ns.capture(text, home=home)
-    print(f"✓ noted [{note['id']}] {note.get('title') or ''}".rstrip())
+    note = ns.capture(text, home=home, tags=tags or None)
+    extra = ("  tags: " + ", ".join(note["tags"])) if note.get("tags") else ""
+    print(f"✓ noted [{note['id']}] {note.get('title') or ''}".rstrip() + extra)
     return 0
 
 
@@ -155,16 +159,17 @@ def cmd_update(words, home):
     note = _resolve_or_report(home, ref)
     if not note:
         return 1
+    body_text, inline_tags = ns.extract_hashtags(" ".join(body_words))
     changes = {}
     if "--title" in opts:
         changes["title"] = opts["--title"]
-    if "--tag" in opts:
-        changes["tags"] = opts["--tag"]
+    if opts.get("--tag") or inline_tags:
+        changes["tags"] = (opts.get("--tag") or []) + inline_tags
     if "--priority" in opts:
         changes["priority"] = opts["--priority"]
     if "--due" in opts:
         changes["due"] = opts["--due"]
-    body = " ".join(body_words) if body_words else None
+    body = body_text.strip() or None
     ns.update(home, note["id"], body=body, **changes)
     print(f"✓ updated [{note['id']}]")
     return 0
