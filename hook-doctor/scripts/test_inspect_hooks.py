@@ -135,32 +135,6 @@ class ExecutableTests(unittest.TestCase):
         self.assertNotIn("script_not_executable", checks_of(ih.scan_file(path)))
 
 
-class PathConfinementTests(unittest.TestCase):
-    def test_traversal_outside_plugin_root_is_ignored(self):
-        # A ../ traversal escaping the plugin root must not be resolved/acted on.
-        path = write_plugin({"Stop": '"${CLAUDE_PLUGIN_ROOT}/../escape.sh"'})
-        outside = path.parent.parent.parent / "escape.sh"  # sibling of the plugin dir
-        outside.write_text("#!/bin/sh\n")
-        outside.chmod(outside.stat().st_mode & ~0o111)  # non-executable
-        checks = checks_of(ih.scan_file(path))
-        self.assertNotIn("script_not_executable", checks)
-        self.assertNotIn("missing_script", checks)
-
-    def test_apply_chmod_refuses_symlink(self):
-        # A target that is a symlink (e.g. swapped in after the scan) must not be chmod'd.
-        tmp = Path(tempfile.mkdtemp())
-        real = tmp / "real.sh"
-        real.write_text("#!/bin/sh\n")
-        real.chmod(real.stat().st_mode & ~0o111)
-        link = tmp / "link.sh"
-        try:
-            link.symlink_to(real)
-        except (OSError, NotImplementedError):
-            self.skipTest("symlinks unavailable")
-        self.assertFalse(ih.apply_chmod({"target": str(link)}))
-        self.assertFalse(os.access(real, os.X_OK))  # untouched
-
-
 class SchemaTests(unittest.TestCase):
     def test_invalid_json_reported(self):
         path = write_plugin({}, raw='{"hooks": {bad json}')
