@@ -65,19 +65,33 @@ def _tokens(command: str) -> list[str]:
         return command.split()
 
 
+def _confine(base: Path, candidate: Path) -> Path | None:
+    """Resolve `candidate` and return it only if it stays within `base` (no ../ escape)."""
+    base_r = base.resolve()
+    resolved = candidate.resolve()
+    try:
+        if resolved.is_relative_to(base_r):
+            return resolved
+    except (OSError, ValueError):
+        pass
+    return None  # path escapes its anchor — refuse to resolve/act on it
+
+
 def _resolve_script_path(command: str, plugin_root: Path | None,
                          project_dir: Path | None) -> Path | None:
     """Resolve the script path a command references, if it can be resolved statically.
 
     ${CLAUDE_PLUGIN_ROOT} is anchored to the plugin dir; ${CLAUDE_PROJECT_DIR} to the
-    project dir (known only when a project is being inspected). Anything else (relative
-    paths, $HOME, unknown vars) is not resolvable here — return None.
+    project dir (known only when a project is being inspected). The resolved path is
+    confined to its anchor — a `../` traversal escaping the root is treated as
+    unresolvable (returns None) so it is never reported or chmod'd. Anything else
+    (relative paths, $HOME, unknown vars) is also not resolvable here.
     """
     for tok in _tokens(command):
         if "${CLAUDE_PLUGIN_ROOT}" in tok and plugin_root is not None:
-            return plugin_root / tok.replace("${CLAUDE_PLUGIN_ROOT}", "").lstrip("/")
+            return _confine(plugin_root, plugin_root / tok.replace("${CLAUDE_PLUGIN_ROOT}", "").lstrip("/"))
         if "${CLAUDE_PROJECT_DIR}" in tok and project_dir is not None:
-            return Path(project_dir) / tok.replace("${CLAUDE_PROJECT_DIR}", "").lstrip("/")
+            return _confine(Path(project_dir), Path(project_dir) / tok.replace("${CLAUDE_PROJECT_DIR}", "").lstrip("/"))
     return None
 
 
@@ -186,11 +200,18 @@ def fix_file(path: Path) -> int:
 
 
 def apply_chmod(finding: dict) -> bool:
-    """Add the execute bit for a script_not_executable finding. Returns success."""
+    """Add the execute bit for a script_not_executable finding. Returns success.
+
+    The target was confined to its plugin/project root at scan time. Re-check that it
+    still exists and is a regular file — refuse symlinks, which could have been swapped
+    in after the scan to redirect the chmod outside the root.
+    """
     target = finding.get("target")
-    if not target or not Path(target).exists():
+    if not target:
         return False
     p = Path(target)
+    if p.is_symlink() or not p.is_file():
+        return False
     p.chmod(p.stat().st_mode | 0o111)
     return True
 
