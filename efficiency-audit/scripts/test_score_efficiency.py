@@ -84,6 +84,7 @@ class FileTests(unittest.TestCase):
         self.assertGreater(result["bytes"], 0)
 
     def test_score_file_missing_returns_none(self):
+        # score_file returns None for missing files — callers skip silently, no output.
         self.assertIsNone(se.score_file(Path("/nonexistent/file.md")))
 
     def test_critical_blocker_flag(self):

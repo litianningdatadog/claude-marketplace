@@ -94,8 +94,7 @@ def main() -> int:
     for f in args.files:
         r = score_file(Path(f))
         if r is None:
-            print(f"  [skip] {f}: not readable", file=sys.stderr)
-            continue
+            continue  # non-existent or unreadable — skip silently
         results.append(r)
 
     if args.json:
@@ -104,8 +103,7 @@ def main() -> int:
         return 0
 
     if not results:
-        print("No files scored.")
-        return 1
+        return 0  # nothing to score — not an error, just nothing to report
 
     print(f"\n{'File':<45} {'Lines':>6}  {'Bytes':>8}  Score            Diagnosis")
     print("─" * 100)
