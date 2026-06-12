@@ -74,6 +74,14 @@ class FileTests(unittest.TestCase):
         path = write_lines(400)
         result = se.score_file(path)
         self.assertEqual(result["lines"], 400)
+
+    def test_score_file_counts_lines_without_trailing_newline(self):
+        # Files without a trailing newline must not undercount by 1.
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False)
+        tmp.write("\n".join(["x"] * 400))  # no trailing newline
+        tmp.close()
+        result = se.score_file(Path(tmp.name))
+        self.assertEqual(result["lines"], 400)
         self.assertLess(result["score"], 1.0)
         self.assertGreater(result["score"], 0.5)
 

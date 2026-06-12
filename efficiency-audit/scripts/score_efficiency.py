@@ -65,7 +65,7 @@ def score_file(path: Path) -> dict | None:
         text = Path(path).read_text(encoding="utf-8", errors="ignore")
     except OSError:
         return None
-    lines = text.count("\n")
+    lines = len(text.splitlines())  # splitlines() counts correctly with or without trailing newline
     score = efficiency_score(lines)
     return {
         "path": str(path),
