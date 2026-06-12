@@ -247,86 +247,12 @@ list and instructions for adding a new pattern to `NOISE_PATTERNS`.
 
 ## File Bloat Remediation (Recipe Book Principle)
 
-The "Recipe Book" principle: a `CLAUDE.md` over ~200 lines is a sign that domain-specific
-rules have leaked into the root instruction file. Those rules load on *every* session in
-every context, even when irrelevant. The fix is to extract them into path-scoped rule files
-under `.claude/rules/` — Claude Code loads these only when working on matching files.
-
-**This is distinct from the file efficiency scorer's thresholds** (300→750→5000 lines).
-The scorer measures bloat on a continuous scale; this procedure triggers at the stricter
-200-line threshold and produces a structural refactor, not just a trim.
-
-### When to run
-
-After Phase 1, check whether any `CLAUDE.md` being audited exceeds 200 lines:
-
-```bash
-wc -l ~/.claude/CLAUDE.md .claude/CLAUDE.md 2>/dev/null
-```
-
-If either exceeds 200 lines, run this procedure *before* proposing new audit rules.
-Adding more rules to a bloated file makes the problem worse.
-
-### Step 1 — Classify every rule
-
-Read the file and classify each rule as:
-- **Core** — applies in every context (e.g. "NEVER commit without permission", project
-  architecture). Stays in root `CLAUDE.md`.
-- **Domain-scoped** — applies only to a specific file type, directory, or tool (e.g.
-  Python style, Go test conventions, SQL patterns). Extract these.
-
-Show the classification to the user as a table before proceeding:
-
-```
-| Rule (first 60 chars)         | Classification | Suggested scope   |
-|-------------------------------|----------------|-------------------|
-| NEVER commit without …        | Core           | keep in CLAUDE.md |
-| Use type hints in all …       | Domain         | **/*.py           |
-| Always run go test ./… before | Domain         | **/*.go           |
-```
-
-### Step 2 — Draft path-scoped rule files
-
-For each domain group, draft a `.claude/rules/<name>.md` with `paths:` frontmatter.
-Claude Code loads these only when the active file matches a pattern.
-
-```markdown
----
-description: Python coding conventions
-paths: ["**/*.py", "**/pyproject.toml"]
----
-
-Use type hints on all function signatures.
-Prefer `pathlib.Path` over `os.path`.
-Tests live in `tests/` and use `pytest`.
-```
-
-Name files descriptively (`python.md`, `go.md`, `sql.md`). Show the full proposed
-content of each file before writing.
-
-### Step 3 — Draft the trimmed root CLAUDE.md
-
-Produce a new version containing only Core rules and project architecture. Show the
-full proposed new content as a diff or complete block before writing.
-
-### Step 4 — Apply (Plan → Act → Verify, SOSA™ approval required)
-
-Apply in order:
-1. Create `.claude/rules/*.md` files first (additive — safe to revert independently).
-2. Trim `CLAUDE.md` second (only after rules files are confirmed written correctly).
-
-Verify after each write: confirm frontmatter is valid YAML and `wc -l CLAUDE.md` is
-now under 200.
-
-### Rules file frontmatter reference
-
-| Key | Required | Example |
-|-----|----------|---------|
-| `description` | recommended | `"Python conventions"` |
-| `paths` | required for scoping | `["**/*.py"]` |
-
-Omitting `paths` means the file loads in all contexts — only omit it for universal
-additions that don't belong in root `CLAUDE.md` for other reasons.
+If `CLAUDE.md` exceeds 200 lines after Phase 1, **read `references/recipe-book.md`**
+(installed at `~/.claude/skills/efficiency-audit/references/recipe-book.md`) for the full
+4-step procedure: classify rules as Core vs Domain-scoped, draft path-scoped
+`.claude/rules/*.md` files with `paths:` frontmatter, draft the trimmed root CLAUDE.md,
+then apply via Plan → Act → Verify with SOSA™ approval. Run this *before* proposing new
+audit rules — adding to a bloated file makes the problem worse.
 
 ## Re-running the Audit
 
