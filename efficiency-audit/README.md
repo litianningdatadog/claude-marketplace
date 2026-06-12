@@ -102,7 +102,7 @@ session) to confirm no *new* failures appear.
 Standard-library `unittest`, no dependencies:
 
 ```bash
-cd scripts && python3 -m unittest test_analyze_conversations test_score_efficiency
+cd scripts && python3 -m unittest test_analyze_conversations
 ```
 
 ## Files
@@ -116,7 +116,5 @@ efficiency-audit/
 │   └── noise-filters.md                  # false-positive filter catalog — loaded when adding filters
 └── scripts/
     ├── analyze_conversations.py          # transcript analyzer CLI
-    ├── score_efficiency.py               # piecewise linear file efficiency scorer
-    ├── test_analyze_conversations.py     # unittest suite for analyzer
-    └── test_score_efficiency.py          # unittest suite for scorer
+    └── test_analyze_conversations.py     # unittest suite
 ```
