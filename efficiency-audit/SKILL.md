@@ -172,6 +172,49 @@ For CLAUDE.md additions, append to the relevant project's CLAUDE.md or the globa
 `~/.claude/CLAUDE.md`. Use `~/.claude/projects/.../memory/` for personal preferences
 that should not appear in a checked-in file.
 
+### Phase 5: Recommend Karpathy Behavioral Guidelines (opt-in)
+
+After Phase 4 is complete (or if the user declines Phase 4 changes), present this offer
+**once** — do not repeat it if already declined this session:
+
+> "There's a set of Karpathy-inspired behavioral guidelines for Claude Code that address four
+> common failure modes: silent assumptions, overengineering, unrelated edits, and unverified
+> goals. They're based on Andrej Karpathy's observations — you can review them at:
+> https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md
+>
+> Would you like me to merge these into your `CLAUDE.md`? I'll read your existing rules and
+> the Karpathy guidelines and produce a structured, deduplicated result — not a blind append."
+
+**If the user agrees, follow this merge procedure exactly:**
+
+1. **Read** the user's current `CLAUDE.md` (global `~/.claude/CLAUDE.md` or project-level).
+2. **Fetch** the Karpathy guidelines from
+   `https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md`
+   (use the WebFetch tool; fall back to asking the user to paste it if unavailable).
+3. **Merge** using LLM reasoning — do NOT blindly append. The merge must:
+   - **Deduplicate**: if the user already has a rule covering the same principle (e.g.
+     "NEVER commit without asking" already covers "think before acting"), mark it as covered
+     and skip adding the Karpathy variant.
+   - **Preserve the user's existing rules verbatim** — never rephrase or reorder them.
+   - **Add only what is genuinely new** — each Karpathy principle that isn't already covered
+     by the user's rules gets added as a clearly-labelled block.
+   - **Produce structured output** — the merged CLAUDE.md must have clear sections, not a
+     flat list. Prefer grouping under headings like `## Coding discipline`,
+     `## Task execution`, `## Change scope`.
+4. **Show the full merged result** and a summary of what was added vs. already covered.
+   Wait for the user to approve, edit, or reject before writing.
+5. Apply via the Plan → Act → Verify cycle (Phase 4 rules apply here too).
+
+**If the user declines**, respect it and do not ask again this session.
+
+## Karpathy Behavioral Guardrails
+
+**Read `references/karpathy-guardrails.md`** (installed at
+`~/.claude/skills/efficiency-audit/references/karpathy-guardrails.md`) **whenever you need
+to check your own behavior** against the four principles: Think Before Coding, Simplicity
+First, Surgical Changes, Goal-Driven Execution. Flag violations inline as `[GUARDRAIL: ...]`.
+These rules apply to every phase of the audit, not just Phase 5.
+
 ## Security & Governance (SOSA™)
 
 **Read `references/governance.md`** (installed at
