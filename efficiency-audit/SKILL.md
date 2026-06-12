@@ -65,12 +65,16 @@ extraction (see "False Positive Filters" below), so every group represents real 
 Interpret each category:
 
 **`corrections`** — Groups of messages where the user redirected or corrected Claude. The
-`count`/`sessions` fields already give you the recurring *class* of mistake. Ask: what
-CLAUDE.md rule or memory entry would have prevented this?
+`count`/`sessions` fields give you the recurring *class* of mistake and the `top_project`
+field shows where it happened most. For each high-count group, **draft a concrete proposed
+CLAUDE.md rule** — don't just describe the problem, write the actual rule text (e.g.
+`NEVER create a new commit unless explicitly instructed`). Present the draft before the
+Phase 3 report so the user can refine it.
 
 **`missing_context`** — Messages where the user re-explained context. Ask: what facts are
 being re-introduced session after session? These belong in CLAUDE.md project instructions
-or in `~/.claude/projects/.../memory/` as persistent memories.
+or in `~/.claude/projects/.../memory/` as persistent memories. Use `top_project` to route
+the fix to the right CLAUDE.md.
 
 **`slow_start_context`** — Messages that orient Claude at session start. Ask: which facts
 are stable (always true) vs. transient (task-specific)? Stable facts go in CLAUDE.md.
@@ -88,15 +92,23 @@ explicit opt-in. Note these errors are **historical** (from past transcripts) an
 until they age out of the `--days` window; after fixing, a fresh session plus a small
 `--days` re-run confirms no *new* failures appear.
 
-**`repeated_topics`** — High-frequency topic words reveal what the user spends time on.
-Cross-reference with other categories to prioritize fixes.
-
 ### Phase 3: Produce a Prioritized Improvement Report
+
+**Before writing the report**, draft proposed fixes for the top findings:
+- For each `corrections` group with `count` >= 3: write a candidate CLAUDE.md rule as a
+  one-liner in imperative form. Example: `NEVER use worktrees for this repo — always use the branch directly.`
+- For each `missing_context` group with `sessions` >= 3: write a candidate CLAUDE.md fact.
+- Show these drafts and ask the user to approve, edit, or skip each before proceeding to
+  the full report. This is the highest-value output of the audit — don't skip it.
 
 Present findings in this structure (omit sections with no findings):
 
 ```
 ## Efficiency Audit Report — <date>
+
+### Proposed CLAUDE.md rules (approve/edit/skip each)
+- [ ] (project: dd-trace-js) NEVER use worktrees — always use the branch directly.
+- [ ] (global) NEVER create a new commit unless explicitly instructed; amend instead.
 
 ### High Impact (apply immediately)
 - Hook errors that fire on every session

@@ -72,7 +72,37 @@ NOISE_PATTERNS = [
     r"\breview this change for security vulnerabilities\b",
     r"^\s*provide a code review for the given pull request\b",
     r"^\s*base directory for this skill\b",
+    # Context injected by hooks/skills into the user message slot.
+    r"^\s*##\s+context\s*[-–]",
+    # Task-workflow messages: user feeding tool/test output back to Claude.
+    # These look like corrections but are really task orchestration.
+    r"\breview the (test|script|command|tool|output|run) (run )?output and fix\b",
+    r"\breview the output and fix\b",
 ]
+
+
+def _is_tool_output_paste(text: str) -> bool:
+    """True when a message is dominated by pasted tool/shell output rather than user intent.
+
+    Detects two structural patterns common in development sessions:
+    - Opens with a code fence (pasted terminal/test output)
+    - Is mostly a shell command invocation (path-heavy, few sentence words)
+    """
+    stripped = text.strip()
+    # Starts with a code block
+    if stripped.startswith("```"):
+        return True
+    # Mostly a shell command: first non-empty line looks like a command
+    # (contains a path separator or starts with a known interpreter/tool)
+    first = next((l for l in stripped.splitlines() if l.strip()), "")
+    if re.match(r"^\s*(python3?|bash|sh|node|ruby|go|cargo|make|cmake|./|/)\s+\S", first):
+        # Check that the message has little conversational text (few lowercase words)
+        words = re.findall(r"\b[a-z]{4,}\b", text.lower())
+        common_verbs = {"please", "this", "that", "with", "from", "have", "will"}
+        conversational = [w for w in words if w not in common_verbs]
+        if len(conversational) < 8:
+            return True
+    return False
 
 
 def parse_args():
@@ -114,9 +144,13 @@ def find_jsonl_files(days: int, project_filter: str | None) -> list[Path]:
 
 
 def is_noise(text: str) -> bool:
-    """True if `text` is system-generated boilerplate rather than real user input."""
+    """True if `text` is system-generated boilerplate or a task-workflow message
+    rather than a real user correction/context-request."""
     low = text.lower()
-    return any(re.search(pat, low) for pat in NOISE_PATTERNS)
+    return (
+        any(re.search(pat, low) for pat in NOISE_PATTERNS)
+        or _is_tool_output_paste(text)
+    )
 
 
 def _join_text_content(content) -> str:
@@ -204,22 +238,31 @@ def score_message(text: str) -> dict:
 def group_by_pattern(scored: list[dict]) -> list[dict]:
     """Cluster matched messages by pattern into recurrence groups.
 
-    `scored` items are {"text", "session", "patterns": [regex, ...]}. A message that
-    matches several patterns contributes to each. Output is sorted by count, then by
-    distinct-session breadth, both descending.
+    `scored` items are {"text", "session", "project", "patterns": [regex, ...]}. Each
+    message is attributed to its FIRST matched pattern only — a message that matches several
+    patterns contributes exactly one count to exactly one group, preventing inflation.
+    Output is sorted by count, then by distinct-session breadth, both descending.
     """
     groups: dict[str, dict] = {}
     for item in scored:
-        for pat in item["patterns"]:
-            g = groups.setdefault(pat, {"pattern": pat, "count": 0, "_sessions": set(), "examples": []})
-            g["count"] += 1
-            g["_sessions"].add(item["session"])
-            if len(g["examples"]) < 3:
-                # Collapse whitespace so multi-line messages stay on one line in reports.
-                g["examples"].append(" ".join(item["text"].split())[:200])
+        # First pattern wins — prevents double-counting across groups.
+        pat = item["patterns"][0]
+        g = groups.setdefault(pat, {"pattern": pat, "count": 0, "_sessions": set(),
+                                    "_projects": Counter(), "examples": []})
+        g["count"] += 1
+        g["_sessions"].add(item["session"])
+        g["_projects"][item.get("project", "")] += 1
+        if len(g["examples"]) < 3:
+            # Collapse whitespace so multi-line messages stay on one line in reports.
+            g["examples"].append(" ".join(item["text"].split())[:200])
 
     out = [
-        {"pattern": g["pattern"], "count": g["count"], "sessions": len(g["_sessions"]), "examples": g["examples"]}
+        {
+            "pattern": g["pattern"], "count": g["count"],
+            "sessions": len(g["_sessions"]),
+            "top_project": g["_projects"].most_common(1)[0][0] if g["_projects"] else "",
+            "examples": g["examples"],
+        }
         for g in groups.values()
     ]
     out.sort(key=lambda x: (x["count"], x["sessions"]), reverse=True)
@@ -248,12 +291,10 @@ def analyze(sessions: list[dict]) -> dict:
         "slow_start_context": [],
         "automation_candidates": [],
         "hook_errors": [],
-        "repeated_topics": [],
     }
 
     all_timestamps = []
     scored = {key: [] for key in CATEGORY_SCORE_KEY}
-    topic_counter = Counter()
 
     for sess in sessions:
         proj = sess["project"]
@@ -268,10 +309,8 @@ def analyze(sessions: list[dict]) -> dict:
             scores = score_message(text)
             for cat, score_key in CATEGORY_SCORE_KEY.items():
                 if scores[score_key]:
-                    scored[cat].append({"text": text, "session": sess["session_id"], "patterns": scores[score_key]})
-
-            for w in _topic_words(text):
-                topic_counter[w] += 1
+                    scored[cat].append({"text": text, "session": sess["session_id"],
+                                        "project": proj, "patterns": scores[score_key]})
 
         findings["hook_errors"].extend({**he, "session": sess["session_id"]} for he in sess["hook_errors"])
 
@@ -283,27 +322,9 @@ def analyze(sessions: list[dict]) -> dict:
         findings["summary"]["date_range"]["earliest"] = all_timestamps[0]
         findings["summary"]["date_range"]["latest"] = all_timestamps[-1]
 
-    findings["repeated_topics"] = [
-        {"topic": w, "count": c} for w, c in topic_counter.most_common(30) if c >= 3
-    ]
-
     findings["hook_errors"] = _dedupe_hook_errors(findings["hook_errors"])
 
     return findings
-
-
-_STOP_WORDS = {
-    "that", "this", "with", "from", "have", "will", "what", "when", "which", "your",
-    "just", "also", "then", "than", "been", "were", "they", "them", "into", "does",
-    "make", "need", "want", "sure", "like", "some", "each", "please", "here", "there",
-    "more", "very", "would", "could", "should", "about", "after", "before", "added",
-    "used", "using", "file", "code", "line", "lines", "change",
-}
-
-
-def _topic_words(text: str) -> list[str]:
-    words = re.findall(r"\b[a-z][a-z_\-]{3,}\b", text.lower())
-    return [w for w in words if w not in _STOP_WORDS]
 
 
 def _dedupe_hook_errors(errors: list[dict]) -> list[dict]:
@@ -343,7 +364,8 @@ def print_text_report(findings: dict):
         print(f"--- {title} ({total} matches across {len(groups)} patterns) ---")
         print(f"    {desc}")
         for g in groups[:5]:
-            print(f"    [{g['count']}x / {g['sessions']} sessions] e.g. {g['examples'][0][:140]}")
+            proj = f" ({g['top_project']})" if g.get("top_project") else ""
+            print(f"    [{g['count']}x / {g['sessions']} sessions{proj}] e.g. {g['examples'][0][:140]}")
         print()
 
     if findings["hook_errors"]:
@@ -354,11 +376,6 @@ def print_text_report(findings: dict):
                 print(f"      stderr: {he['stderr'][:100]}")
         print()
 
-    if findings["repeated_topics"]:
-        print("--- TOP RECURRING TOPICS ---")
-        topics = [(t["topic"], t["count"]) for t in findings["repeated_topics"][:15]]
-        print("    " + ", ".join(f"{t}({c})" for t, c in topics))
-        print()
 
 
 def main():

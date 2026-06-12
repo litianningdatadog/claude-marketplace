@@ -9,11 +9,12 @@ automation candidates, and failing hooks — then proposes and applies concrete 
 
 ## How it works
 
-Pipeline: **analyze → report → propose → apply (with approval)**. A Python script
-(`scripts/analyze_conversations.py`) parses the JSONL transcripts under
-`~/.claude/projects/` and emits pre-clustered findings; Claude then synthesizes a
-prioritized report and applies approved changes to `CLAUDE.md`, memory, and settings. See
-`SKILL.md` for the full four-phase procedure Claude follows.
+Pipeline: **analyze → draft rules → report → apply (with approval)**. A Python script
+(`scripts/analyze_conversations.py`) parses the JSONL transcripts under `~/.claude/projects/`
+and emits pre-clustered findings grouped by recurrence count and dominant project. Claude then
+**drafts concrete proposed `CLAUDE.md` rules** for the top correction groups (approve/edit/skip),
+synthesizes a prioritized report, and applies approved changes to `CLAUDE.md`, memory, and
+settings. See `SKILL.md` for the full four-phase procedure Claude follows.
 
 ## Install
 
@@ -47,11 +48,19 @@ python3 scripts/analyze_conversations.py --days 30 --output json 2>/dev/null
 ### Output categories
 
 `corrections`, `missing_context`, `slow_start_context`, and `automation_candidates` are
-each a list of groups carrying a recurrence `count`, distinct-`sessions` count, and up to
-three `examples`, sorted by frequency. `hook_errors` lists failing hooks (name, exit code,
-stderr). `repeated_topics` lists high-frequency keywords. System-generated noise
+each a list of groups sorted by frequency. Each group carries:
+
+| Field | Meaning |
+|-------|---------|
+| `count` | How many user messages matched |
+| `sessions` | Distinct sessions where the pattern appeared |
+| `top_project` | The project where this friction occurred most |
+| `examples` | Up to 3 representative messages (whitespace-collapsed) |
+
+`hook_errors` lists failing hooks (name, exit code, stderr). System-generated noise
 (context-compaction notices, slash-command and skill-body injections, security-review
-boilerplate) is filtered out during extraction.
+boilerplate, context-injection headers, and tool-output pastes) is filtered out during
+extraction — every group in the output represents real user input.
 
 ## Troubleshooting
 

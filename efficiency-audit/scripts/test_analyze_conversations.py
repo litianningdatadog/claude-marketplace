@@ -78,6 +78,34 @@ class NoiseFilterTests(unittest.TestCase):
             ac.is_noise("Base directory for this skill: /Users/x/.claude/skills/foo")
         )
 
+    def test_task_workflow_messages_are_noise(self):
+        # "Review the X output and fix" — user pasting test/tool output back.
+        self.assertTrue(ac.is_noise(
+            "review the test run output and fix the script if needed: python3 scripts/x.py"
+        ))
+        self.assertTrue(ac.is_noise(
+            "review the output and fix if needed: some error here"
+        ))
+        # Message dominated by a code block (pasted tool output).
+        self.assertTrue(ac.is_noise(
+            "```\nFailed with exit code 1\nsome traceback here\n```"
+        ))
+        # Messages that are mostly a shell command / file path paste.
+        self.assertTrue(ac.is_noise(
+            "python3 scripts/analyze_conversations.py \\\n  --days 30 --project /Users/x/repo"
+        ))
+
+    def test_context_injection_prefix_is_noise(self):
+        # Hooks/skills inject "## Context - ..." into the user message slot.
+        self.assertTrue(ac.is_noise(
+            "## Context - Current git status: On branch main\nUntracked files: ..."
+        ))
+        self.assertTrue(ac.is_noise("## Context - relevant info here"))
+
+    def test_genuine_corrections_not_filtered_as_workflow(self):
+        self.assertFalse(ac.is_noise("no, don't commit yet, we need to fix the tests first"))
+        self.assertFalse(ac.is_noise("please don't create a new commit, amend instead"))
+
     def test_real_correction_is_not_noise(self):
         self.assertFalse(ac.is_noise("no, don't use that approach, use a hook instead"))
 
@@ -245,6 +273,25 @@ class RecurrenceTests(unittest.TestCase):
         )
         top = findings["corrections"][0]
         self.assertEqual(top["sessions"], 2)
+
+    def test_message_matching_multiple_patterns_counted_once(self):
+        # A message that matches two patterns in the same category should only be counted
+        # once across all groups — it gets attributed to the first matched pattern only.
+        # "please don't do that" matches both "please don't..." and "don't do..."
+        findings = self._analyze([[user("please don't do that")]])
+        total_counts = sum(g["count"] for g in findings["corrections"])
+        # Should be 1, not 2 (one per matched pattern).
+        self.assertEqual(total_counts, 1)
+
+    def test_total_count_not_inflated_across_groups(self):
+        # With 3 distinct messages that each match one pattern, total should be 3.
+        findings = self._analyze([[
+            user("no, don't do that"),
+            user("that's not what I asked"),
+            user("please revert this change"),
+        ]])
+        total = sum(g["count"] for g in findings["corrections"])
+        self.assertEqual(total, 3)
 
 
 if __name__ == "__main__":
