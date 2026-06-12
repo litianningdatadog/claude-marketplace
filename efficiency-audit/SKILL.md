@@ -245,6 +245,15 @@ Noise is filtered automatically during extraction. If a new format slips through
 `~/.claude/skills/efficiency-audit/references/noise-filters.md`) for the current filter
 list and instructions for adding a new pattern to `NOISE_PATTERNS`.
 
+## File Bloat Remediation (Recipe Book Principle)
+
+If `CLAUDE.md` exceeds 200 lines after Phase 1, **read `references/recipe-book.md`**
+(installed at `~/.claude/skills/efficiency-audit/references/recipe-book.md`) for the full
+4-step procedure: classify rules as Core vs Domain-scoped, draft path-scoped
+`.claude/rules/*.md` files with `paths:` frontmatter, draft the trimmed root CLAUDE.md,
+then apply via Plan → Act → Verify with SOSA™ approval. Run this *before* proposing new
+audit rules — adding to a bloated file makes the problem worse.
+
 ## Re-running the Audit
 
 Run every 2–4 weeks to catch new patterns. The script automatically saves a baseline after
