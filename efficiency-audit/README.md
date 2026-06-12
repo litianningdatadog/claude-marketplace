@@ -9,12 +9,13 @@ automation candidates, and failing hooks — then proposes and applies concrete 
 
 ## How it works
 
-Pipeline: **analyze → draft rules → report → plan → act → verify → (opt-in) Karpathy merge**.
-A Python script (`scripts/analyze_conversations.py`) parses the JSONL transcripts under
-`~/.claude/projects/` and emits pre-clustered findings grouped by recurrence count and dominant
-project. Claude drafts concrete proposed `CLAUDE.md` rules for the top correction groups,
-synthesizes a prioritized report, applies approved changes following a strict **Plan → Act →
-Verify** cycle, and finally offers an opt-in smart merge of
+Pipeline: **analyze + score files → draft rules → report → plan → act → verify → (opt-in) Karpathy merge**.
+Two scripts run in Phase 1: `analyze_conversations.py` scans transcripts for friction patterns,
+and `score_efficiency.py` scores your `CLAUDE.md` / `MEMORY.md` on a 0.0–1.0 efficiency scale
+(files ≥ 5000 lines are flagged as Critical Context Blockers). Claude drafts concrete proposed
+`CLAUDE.md` rules for the top correction groups, synthesizes a prioritized report, applies
+approved changes following a strict **Plan → Act → Verify** cycle, and finally offers an opt-in
+smart merge of
 [Karpathy-inspired behavioral guidelines](https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md)
 into your `CLAUDE.md` (deduplicated against your existing rules — not blindly appended).
 
@@ -65,6 +66,25 @@ The `--output text` mode automatically saves a baseline to `~/.claude/efficiency
 after each run and shows deltas on the next run — e.g. `CORRECTIONS (22 matches, was 30, -27% ↓)`.
 This lets you measure whether CLAUDE.md fixes are actually reducing friction over time.
 
+### Scoring CLAUDE.md / MEMORY.md for bloat
+
+`score_efficiency.py` applies piecewise linear interpolation to give any file a 0.0–1.0 score:
+
+```bash
+python3 scripts/score_efficiency.py ~/.claude/CLAUDE.md        # single file
+python3 scripts/score_efficiency.py ~/.claude/CLAUDE.md --json  # machine-readable
+```
+
+| Lines | Score | Diagnosis |
+|-------|-------|-----------|
+| 0–300 | 1.00 | Optimal |
+| 300–750 | 1.00→0.50 | Good / Warning |
+| 750–5000 | 0.50→0.00 | Critical |
+| ≥ 5000 | **0.00** | **Critical Context Blocker** — exits 1 |
+
+Files that score 0.0 are treated as **High Impact** in the Phase 3 report regardless of
+friction findings.
+
 ### Output categories
 
 `corrections`, `missing_context`, `slow_start_context`, and `automation_candidates` are
@@ -102,7 +122,7 @@ session) to confirm no *new* failures appear.
 Standard-library `unittest`, no dependencies:
 
 ```bash
-cd scripts && python3 -m unittest test_analyze_conversations
+cd scripts && python3 -m unittest test_analyze_conversations test_score_efficiency
 ```
 
 ## Files
