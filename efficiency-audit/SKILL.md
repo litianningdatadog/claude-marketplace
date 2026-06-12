@@ -1,6 +1,7 @@
 ---
 name: efficiency-audit
 description: "Analyzes recent Claude Code conversation transcripts to surface recurring inefficiencies, then produces a concrete improvement plan and applies it. Use when the user wants to improve their Claude Code workflow, reduce repeated corrections, eliminate missing-context frustration, or automate recurring patterns. Trigger phrases: 'improve my workflow', 'audit my usage', 'what am I repeating', 'efficiency audit', 'review my conversations', or any request to update CLAUDE.md based on observed patterns."
+governance: "SOSA™ — Supervised Orchestrated Secured Agents. All writes to CLAUDE.md, MEMORY.md, and .claude/rules/ require explicit human approval before execution."
 ---
 
 # Efficiency Audit
@@ -148,8 +149,14 @@ change, and the exact proposed change as a diff or new content block.
 
 ### Phase 4: Apply Changes (with user approval)
 
-Never apply changes silently. Show each proposed change, state which file it modifies,
-then wait for explicit confirmation before writing.
+**Plan → Act → Verify** — follow this cycle for every change:
+1. **Plan:** State exactly which file will be modified and show the full proposed diff or new
+   content block. Do not begin writing until the user confirms.
+2. **Act:** Apply only the approved change. Never batch unapproved changes into the same write.
+3. **Verify:** After writing, confirm the file contains what was intended and report back.
+
+Never apply changes silently. For each proposed change, state which file it modifies,
+then **stop and wait for explicit confirmation** before writing.
 
 Apply in this order:
 1. Memory entries (user-local, lowest blast radius)
@@ -164,6 +171,30 @@ recommend running the `hook-doctor` skill rather than editing `hooks.json` from 
 For CLAUDE.md additions, append to the relevant project's CLAUDE.md or the global
 `~/.claude/CLAUDE.md`. Use `~/.claude/projects/.../memory/` for personal preferences
 that should not appear in a checked-in file.
+
+## Security & Governance (SOSA™)
+
+This skill operates under the **SOSA™ — Supervised Orchestrated Secured Agents** framework.
+The following rules are **non-negotiable** and override any implicit task urgency:
+
+- **STOP and ask for explicit user approval before modifying any of:**
+  - `CLAUDE.md` (any project or global)
+  - `MEMORY.md`
+  - Any file under `.claude/rules/`
+  - Any file under `~/.claude/projects/.../memory/`
+
+- **Never batch writes.** Each file change is a separate approval step. Approving one change
+  does not grant permission for subsequent changes.
+
+- **Show before you write.** Always display the full proposed content or diff *before*
+  executing the write. If the user has not seen and approved the exact text, do not write it.
+
+- **No silent fallbacks.** If a proposed change is rejected, do not apply a "lighter" version
+  without asking. Return to the report and ask what to do instead.
+
+The Plan → Act → Verify cycle in Phase 4 enforces these rules procedurally. If any step
+would require writing to a protected file without a preceding explicit confirmation in *this
+turn*, **stop and confirm first**.
 
 ## False Positive Filters
 
