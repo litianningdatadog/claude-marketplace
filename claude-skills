@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# claude-skills — plugin marketplace CLI for Claude Code
+# Usage: claude-skills <command> [args]
+
+set -euo pipefail
+
+MARKETPLACE_DIR="${HOME}/.claude/marketplace"
+SKILLS_DIR="${HOME}/.claude/skills"
+SOURCES_FILE="${MARKETPLACE_DIR}/sources.json"
+INSTALLED_FILE="${MARKETPLACE_DIR}/installed.json"
+TMP_DIR="${MARKETPLACE_DIR}/tmp"
+SUPPORTED_SCHEMA_VERSION=1
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+die() { echo "error: $*" >&2; exit 1; }
+
+ensure_dirs() {
+    mkdir -p "$MARKETPLACE_DIR" "$SKILLS_DIR" "$TMP_DIR"
+}
+
+init_sources() {
+    [ -f "$SOURCES_FILE" ] || echo '{"sources":[]}' > "$SOURCES_FILE"
+}
+
+init_installed() {
+    [ -f "$INSTALLED_FILE" ] || echo '{"installed":[]}' > "$INSTALLED_FILE"
+}
+
+# ── cmd: sources ──────────────────────────────────────────────────────────────
+
+cmd_sources() {
+    init_sources
+    python3 - "$SOURCES_FILE" << 'PYEOF'
+import json, sys
+data = json.load(open(sys.argv[1]))
+sources = data.get('sources', [])
+if not sources:
+    print('No sources registered.')
+else:
+    for s in sources:
+        print(f"{s['name']}  {s['registry_url']}")
+PYEOF
+}
+
+# ── cmd: add ─────────────────────────────────────────────────────────────────
+
+cmd_add() {
+    local url="${1:-}"
+    [ -n "$url" ] || die "Usage: claude-skills add <registry-url>"
+    ensure_dirs
+    init_sources
+
+    # Fetch registry to validate schema_version and get repo_url
+    local tmpfile="${TMP_DIR}/registry_validate.json"
+    curl -fsSL "$url" -o "$tmpfile" || die "Failed to fetch registry from ${url}"
+
+    python3 - "$SOURCES_FILE" "$tmpfile" "$url" "$SUPPORTED_SCHEMA_VERSION" << 'PYEOF'
+import json, sys
+from datetime import datetime, timezone
+
+sources_file, reg_file, url, supported_ver = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+reg = json.load(open(reg_file))
+schema_ver = reg.get('schema_version', 0)
+if schema_ver != supported_ver:
+    print(f"error: unsupported registry schema_version {schema_ver} (expected {supported_ver})", file=sys.stderr)
+    sys.exit(1)
+
+repo_url = reg.get('source', '')
+from urllib.parse import urlparse
+host = urlparse(url).netloc
+name = host.split('.')[0] if '.' in host else host
+
+data = json.load(open(sources_file))
+for s in data['sources']:
+    if s['registry_url'] == url:
+        print(f"Source '{name}' already registered.")
+        sys.exit(0)
+
+data['sources'].append({
+    'name': name,
+    'registry_url': url,
+    'repo_url': repo_url,
+    'added_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+})
+json.dump(data, open(sources_file, 'w'), indent=2)
+print(f"Added source: {name}  ({url})")
+PYEOF
+    rm -f "$tmpfile"
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────────────
+
+ensure_dirs
+init_sources
+init_installed
+
+case "${1:-}" in
+    add)     cmd_add "${2:-}" ;;
+    sources) cmd_sources ;;
+    *)
+        echo "claude-skills — plugin marketplace CLI for Claude Code"
+        echo ""
+        echo "Usage:"
+        echo "  claude-skills add <registry-url>    Register a marketplace source"
+        echo "  claude-skills list                  List available skills"
+        echo "  claude-skills install <name>        Install a skill"
+        echo "  claude-skills update                Update all CLI-installed skills"
+        echo "  claude-skills remove <name>         Remove an installed skill"
+        echo "  claude-skills sources               List registered sources"
+        ;;
+esac
