@@ -55,7 +55,7 @@ Surface as an informational note in Phase 3, not as a fixable finding:
 
 Before drafting the checklist entry, **stop and ask the user**:
 
-> "The hook would set a project+branch title (e.g. `claude-skills | main`) on every session
+> "The hook would set a project+branch title (e.g. `claude-marketplace | main`) on every session
 > start — reliable but not task-specific. Task-specific titles still require invoking the
 > skill manually mid-session.
 >
@@ -86,7 +86,7 @@ Route to **Automation Opportunities** in the Phase 3 report. Treat as **High Imp
 After applying, add this post-apply note:
 
 > "The hook takes effect immediately on the **next session start**. The title will show
-> `<project> | <branch>` (e.g. `claude-skills | main`). For task-specific titles, invoke
+> `<project> | <branch>` (e.g. `claude-marketplace | main`). For task-specific titles, invoke
 > the `terminal-title` skill manually mid-session."
 
 **Skill installed + no conflict + `hook_exists` → no finding.**

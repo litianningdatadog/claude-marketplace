@@ -1,4 +1,4 @@
-# claude-skills
+# claude-marketplace
 
 A collection of [Claude Code](https://claude.com/claude-code) **Skills** — self-contained
 directories that extend Claude's capabilities with specialized, repeatable workflows.

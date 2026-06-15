@@ -31,8 +31,8 @@ title: "pgbouncer pool size"
 created: "2026-06-05T15:30:12Z"
 updated: "2026-06-05T15:30:12Z"
 priority: null            # low | med | high
-project: "claude-skills"
-cwd: "/Users/you/arena/claude-skills"
+project: "claude-marketplace"
+cwd: "/Users/you/arena/claude-marketplace"
 branch: "main"
 tags: ["db", "perf"]
 due: null                 # ISO-8601 for time reminders

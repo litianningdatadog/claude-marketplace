@@ -34,7 +34,7 @@ the detection commands, outcome interpretation, proposed rule text, and post-app
 Run the analysis script to extract patterns from the last 30 days of conversations. Default
 to scoping the audit to the **current project** so findings reflect the repo you're in —
 pass the project's folder name to `--project` (matched as a substring of the stored
-transcript path, which is the cwd with `/` replaced by `-`, e.g. `claude-skills`):
+transcript path, which is the cwd with `/` replaced by `-`, e.g. `claude-marketplace`):
 
 ```bash
 python3 ~/.claude/skills/efficiency-audit/scripts/analyze_conversations.py \
