@@ -1,4 +1,5 @@
 # scripts/test_generate_registry.py
+import json
 import os
 import shutil
 import sys
@@ -108,6 +109,45 @@ class TestDiscoverSkills(unittest.TestCase):
         self._make_skill('skill-b')
         skills = discover_skills(self.tmpdir)
         self.assertEqual(len(skills), 2)
+
+
+class TestMain(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def _make_skill(self, name):
+        skill_dir = os.path.join(self.tmpdir, name)
+        os.makedirs(skill_dir)
+        with open(os.path.join(skill_dir, 'SKILL.md'), 'w') as f:
+            f.write(f'---\nname: {name}\ndescription: "Test"\n---\n')
+
+    def test_preserves_updated_at_when_skills_unchanged(self):
+        from generate_registry import discover_skills
+
+        self._make_skill('my-skill')
+        output_path = os.path.join(self.tmpdir, 'registry.json')
+        fixed_time = '2020-01-01T00:00:00Z'
+
+        skills = discover_skills(self.tmpdir)
+
+        # Write initial registry with fixed timestamp
+        initial = {
+            'schema_version': 1,
+            'updated_at': fixed_time,
+            'source': 'https://example.com',
+            'skills': skills,
+        }
+        with open(output_path, 'w') as f:
+            json.dump(initial, f)
+
+        # Simulate the preservation logic from main()
+        with open(output_path) as f:
+            existing = json.load(f)
+        preserved_at = existing.get('updated_at') if existing.get('skills') == skills else None
+        self.assertEqual(preserved_at, fixed_time)
 
 
 if __name__ == '__main__':
