@@ -15,22 +15,22 @@ skill does; this README is the entry point for humans browsing or installing the
 | [`hook-doctor`](hook-doctor/) | Inspects and repairs installed plugin hook configurations (`hooks.json`). Detects unquoted `${CLAUDE_PLUGIN_ROOT}` commands that fail in agent-mode, reports them, and applies safe idempotent fixes with explicit opt-in. |
 | [`quicknotes`](quicknotes/) | Low-friction quick-note capture and management. Centralized markdown notes (`~/.quicknotes`) with date/project/dir metadata, tags, fuzzy search, references, and time/location reminders; completing a note deletes it. Capture via the `qn` CLI (instant), `/qn`, or natural language. |
 
-## Installing a skill
+## Installing plugins
 
-Skills are discovered by Claude Code under `~/.claude/skills/`. To install one from this
-repo, copy its directory there:
+This repo is a Claude Code plugin marketplace. Add it once, then install skills à la carte:
 
 ```bash
-cp -R <skill> ~/.claude/skills/
+# Add the marketplace (once per machine)
+/plugin marketplace add litianningdatadog/claude-marketplace
+
+# Install skills
+/plugin install efficiency-audit@claude-marketplace
+/plugin install hook-doctor@claude-marketplace
+/plugin install quicknotes@claude-marketplace
 ```
 
-A skill activates automatically when your request matches the triggers in its `SKILL.md`
-frontmatter `description`. See the skill's own README (linked in the table above) for its
-triggers, usage, and any flags.
-
-> Note: a `SKILL.md` references its own scripts by their **installed** path
-> (`~/.claude/skills/<name>/scripts/...`). When developing in this repo, run scripts from
-> the repo path instead.
+Plugins auto-update when you run `/plugin marketplace update`. Each skill activates
+automatically when your request matches the triggers in its `SKILL.md` description.
 
 ## Development
 
@@ -41,11 +41,11 @@ directory. Per-skill setup, CLI usage, and test commands live in each skill's RE
 ## Contributing a new skill
 
 1. Create a top-level directory named in kebab-case (matches the skill's `name`).
-2. Add a `SKILL.md` with frontmatter (`name`, `description`) and a body written as a
-   procedure for the agent to follow. Front-load concrete trigger phrases in
-   `description` — it's the only text read when deciding whether to activate.
-3. Put supporting code under `<skill>/scripts/`; reference it from `SKILL.md` by its
-   installed path.
-4. Add the skill to the table above.
+2. Add a `.claude-plugin/plugin.json` with `name` and `description`.
+3. Add `skills/<name>/SKILL.md` as the agent procedure. Front-load trigger phrases in
+   the frontmatter `description` — it's the only text read when deciding whether to activate.
+   Reference supporting scripts via `${PLUGIN_ROOT}/scripts/...` (resolved dynamically at runtime).
+4. Put supporting code under `<skill>/scripts/` (stays at the plugin root).
+5. Add the plugin entry to `.claude-plugin/marketplace.json` and the skill to the table above.
 
 See [`CLAUDE.md`](CLAUDE.md) for the conventions Claude follows when working in this repo.
