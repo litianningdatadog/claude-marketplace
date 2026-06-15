@@ -188,58 +188,65 @@ repo_name = repo_url.split('/')[-1]
 tarball_url = f"{repo_url}/archive/refs/heads/main.tar.gz"
 
 tarball_path = os.path.join(tmp_dir, f"{skill_name}.tar.gz")
-print(f"Downloading {skill_name} from {source['name']}...")
-with urllib.request.urlopen(tarball_url, timeout=60) as resp:
-    with open(tarball_path, 'wb') as f:
-        f.write(resp.read())
-
 extract_tmp = os.path.join(tmp_dir, f"{skill_name}_extract")
-os.makedirs(extract_tmp, exist_ok=True)
-prefix = f"{repo_name}-main/{skill_path}/"
+try:
+    print(f"Downloading {skill_name} from {source['name']}...")
+    with urllib.request.urlopen(tarball_url, timeout=60) as resp:
+        with open(tarball_path, 'wb') as f:
+            f.write(resp.read())
 
-with tarfile.open(tarball_path, 'r:gz') as tf:
-    members = []
-    for member in tf.getmembers():
-        if not member.name.startswith(prefix):
-            continue
-        member.name = member.name[len(f"{repo_name}-main/"):]
-        # Guard against path traversal in untrusted tarballs
-        if os.path.isabs(member.name) or '..' in member.name.split('/'):
-            continue
-        members.append(member)
-    tf.extractall(extract_tmp, members=members)
+    os.makedirs(extract_tmp, exist_ok=True)
+    prefix = f"{repo_name}-main/{skill_path}/"
 
-extracted = os.path.join(extract_tmp, skill_path)
-if not os.path.isdir(extracted):
-    print(f"error: skill directory '{skill_path}' not found in tarball", file=sys.stderr); sys.exit(1)
+    with tarfile.open(tarball_path, 'r:gz') as tf:
+        members = []
+        for member in tf.getmembers():
+            if not member.name.startswith(prefix):
+                continue
+            member.name = member.name[len(f"{repo_name}-main/"):]
+            # Guard against path traversal in untrusted tarballs
+            if os.path.isabs(member.name) or '..' in member.name.split('/'):
+                continue
+            members.append(member)
+        try:
+            tf.extractall(extract_tmp, members=members, filter='fully_trusted')
+        except TypeError:
+            tf.extractall(extract_tmp, members=members)
 
-staging = os.path.join(tmp_dir, f"{skill_name}_staging")
-if os.path.exists(staging):
-    shutil.rmtree(staging)
-shutil.copytree(extracted, staging)
+    extracted = os.path.join(extract_tmp, skill_path)
+    if not os.path.isdir(extracted):
+        print(f"error: skill directory '{skill_path}' not found in tarball", file=sys.stderr); sys.exit(1)
 
-# Atomic replace: move old aside, move new into place, then remove old
-old_backup = dest + '.old'
-if os.path.exists(old_backup):
-    shutil.rmtree(old_backup)
-if os.path.exists(dest):
-    shutil.move(dest, old_backup)
-shutil.move(staging, dest)
-if os.path.exists(old_backup):
-    shutil.rmtree(old_backup)
+    staging = os.path.join(tmp_dir, f"{skill_name}_staging")
+    if os.path.exists(staging):
+        shutil.rmtree(staging)
+    shutil.copytree(extracted, staging)
 
-now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-installed_data['installed'] = [i for i in installed_data['installed'] if i['name'] != skill_name]
-installed_data['installed'].append({'name': skill_name, 'source': source['name'],
-                                     'installed_at': now,
-                                     'registry_updated_at': m['registry_updated_at']})
-with open(installed_file, 'w') as f:
-    json.dump(installed_data, f, indent=2)
+    # Atomic replace: move old aside, move new into place, then remove old
+    old_backup = dest + '.old'
+    if os.path.exists(old_backup):
+        shutil.rmtree(old_backup)
+    if os.path.exists(dest):
+        shutil.move(dest, old_backup)
+    shutil.move(staging, dest)
+    if os.path.exists(old_backup):
+        shutil.rmtree(old_backup)
 
-shutil.rmtree(extract_tmp)
-os.remove(tarball_path)
-print(f"Installed {skill_name} → {dest}")
-print("Open a new Claude Code session to activate the skill.")
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    installed_data['installed'] = [i for i in installed_data['installed'] if i['name'] != skill_name]
+    installed_data['installed'].append({'name': skill_name, 'source': source['name'],
+                                         'installed_at': now,
+                                         'registry_updated_at': m['registry_updated_at']})
+    with open(installed_file, 'w') as f:
+        json.dump(installed_data, f, indent=2)
+
+    print(f"Installed {skill_name} → {dest}")
+    print("Open a new Claude Code session to activate the skill.")
+finally:
+    if os.path.exists(extract_tmp):
+        shutil.rmtree(extract_tmp, ignore_errors=True)
+    if os.path.exists(tarball_path):
+        os.remove(tarball_path)
 PYEOF
 }
 
@@ -251,16 +258,16 @@ cmd_remove() {
     init_installed
     local dest="${SKILLS_DIR}/${name}"
     [ -d "$dest" ] || die "Skill not installed: ${name}"
-    rm -rf "$dest"
-    python3 - "$INSTALLED_FILE" "$name" << 'PYEOF'
-import json, sys
-path, name = sys.argv[1], sys.argv[2]
+    python3 - "$INSTALLED_FILE" "$name" "$dest" << 'PYEOF'
+import json, shutil, sys
+path, name, dest = sys.argv[1], sys.argv[2], sys.argv[3]
 with open(path) as f:
     data = json.load(f)
 before = len(data['installed'])
 data['installed'] = [i for i in data['installed'] if i['name'] != name]
 with open(path, 'w') as f:
     json.dump(data, f, indent=2)
+shutil.rmtree(dest)
 suffix = '' if len(data['installed']) < before else ' (was not CLI-managed)'
 print(f"Removed {name}{suffix}")
 PYEOF
