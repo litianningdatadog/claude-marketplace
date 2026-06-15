@@ -1,5 +1,4 @@
 # scripts/test_generate_registry.py
-import json
 import os
 import shutil
 import sys
@@ -87,7 +86,7 @@ class TestDiscoverSkills(unittest.TestCase):
         skills = discover_skills(self.tmpdir)
         self.assertEqual(len(skills), 0)
 
-    def test_excludes_non_directories(self):
+    def test_excludes_plain_files(self):
         with open(os.path.join(self.tmpdir, 'SKILL.md'), 'w') as f:
             f.write('---\nname: root\ndescription: "Root"\n---\n')
         skills = discover_skills(self.tmpdir)
