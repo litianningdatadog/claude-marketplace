@@ -33,7 +33,8 @@ cmd_sources() {
     init_sources
     python3 - "$SOURCES_FILE" << 'PYEOF'
 import json, sys
-data = json.load(open(sys.argv[1]))
+with open(sys.argv[1]) as f:
+    data = json.load(f)
 sources = data.get('sources', [])
 if not sources:
     print('No sources registered.')
@@ -52,7 +53,9 @@ cmd_add() {
     init_sources
 
     # Fetch registry to validate schema_version and get repo_url
-    local tmpfile="${TMP_DIR}/registry_validate.json"
+    local tmpfile
+    tmpfile=$(mktemp "${TMP_DIR}/registry_validate.XXXXXX.json")
+    trap 'rm -f "$tmpfile"' RETURN
     curl -fsSL "$url" -o "$tmpfile" || die "Failed to fetch registry from ${url}"
 
     python3 - "$SOURCES_FILE" "$tmpfile" "$url" "$SUPPORTED_SCHEMA_VERSION" << 'PYEOF'
@@ -60,7 +63,8 @@ import json, sys
 from datetime import datetime, timezone
 
 sources_file, reg_file, url, supported_ver = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
-reg = json.load(open(reg_file))
+with open(reg_file) as f:
+    reg = json.load(f)
 schema_ver = reg.get('schema_version', 0)
 if schema_ver != supported_ver:
     print(f"error: unsupported registry schema_version {schema_ver} (expected {supported_ver})", file=sys.stderr)
@@ -71,7 +75,8 @@ from urllib.parse import urlparse
 host = urlparse(url).netloc
 name = host.split('.')[0] if '.' in host else host
 
-data = json.load(open(sources_file))
+with open(sources_file) as f:
+    data = json.load(f)
 for s in data['sources']:
     if s['registry_url'] == url:
         print(f"Source '{name}' already registered.")
@@ -83,10 +88,10 @@ data['sources'].append({
     'repo_url': repo_url,
     'added_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
 })
-json.dump(data, open(sources_file, 'w'), indent=2)
+with open(sources_file, 'w') as f:
+    json.dump(data, f, indent=2)
 print(f"Added source: {name}  ({url})")
 PYEOF
-    rm -f "$tmpfile"
 }
 
 # ── Dispatch ─────────────────────────────────────────────────────────────────
