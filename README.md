@@ -24,9 +24,9 @@ This repo is a Claude Code plugin marketplace. Add it once, then install skills 
 /plugin marketplace add litianningdatadog/claude-marketplace
 
 # Install skills
-/plugin install efficiency-audit@claude-marketplace
-/plugin install hook-doctor@claude-marketplace
-/plugin install quicknotes@claude-marketplace
+/plugin install efficiency-audit@litianningdatadog-marketplace
+/plugin install hook-doctor@litianningdatadog-marketplace
+/plugin install quicknotes@litianningdatadog-marketplace
 ```
 
 Plugins auto-update when you run `/plugin marketplace update`. Each skill activates

@@ -36,7 +36,7 @@ Ask before scanning:
 ### 1. Scan
 
 ```bash
-PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/claude-marketplace/hook-doctor/*/ 2>/dev/null | head -1)
+PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/hook-doctor/*/ 2>/dev/null | head -1)
 python3 "${PLUGIN_ROOT}/scripts/inspect_hooks.py" 2>/dev/null
 ```
 
@@ -55,7 +55,7 @@ Offer: **(a)** fix locally · **(b)** upstream PR · **(c)** both · **(d)** ski
 2. **Act**:
 
 ```bash
-PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/claude-marketplace/hook-doctor/*/ 2>/dev/null | head -1)
+PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/hook-doctor/*/ 2>/dev/null | head -1)
 python3 "${PLUGIN_ROOT}/scripts/inspect_hooks.py" --apply 2>/dev/null
 ```
 

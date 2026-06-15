@@ -34,7 +34,7 @@ the detection commands, outcome interpretation, proposed rule text, and post-app
 **Path resolver — run this first to set `PLUGIN_ROOT`:**
 
 ```bash
-PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/claude-marketplace/efficiency-audit/*/ 2>/dev/null | head -1)
+PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/efficiency-audit/*/ 2>/dev/null | head -1)
 ```
 
 Use `${PLUGIN_ROOT}` in all subsequent commands to reference scripts and reference files.

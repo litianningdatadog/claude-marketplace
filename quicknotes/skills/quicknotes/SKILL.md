@@ -30,7 +30,7 @@ another terminal (see README) — same store, no Claude round-trip.
 Capture is frictionless: anything that isn't a management verb is the note. Run:
 
 ```bash
-PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/claude-marketplace/quicknotes/*/ 2>/dev/null | head -1)
+PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/quicknotes/*/ 2>/dev/null | head -1)
 python3 "${PLUGIN_ROOT}/scripts/qn.py" <the note text> [#tag …] [--tag T]
 ```
 

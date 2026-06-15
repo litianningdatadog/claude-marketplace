@@ -1,5 +1,5 @@
 {
-  "name": "claude-marketplace",
+  "name": "litianningdatadog-marketplace",
   "description": "Claude Code skills for workflow automation, hook repair, and quick notes.",
   "owner": { "name": "Tianning Li" },
   "plugins": [
