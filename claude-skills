@@ -273,6 +273,31 @@ print(f"Removed {name}{suffix}")
 PYEOF
 }
 
+# ── cmd: update ───────────────────────────────────────────────────────────────
+
+cmd_update() {
+    init_installed
+    local names
+    names=$(python3 - "$INSTALLED_FILE" << 'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+for i in data['installed']:
+    print(i['name'])
+PYEOF
+)
+    if [ -z "$names" ]; then
+        echo "No CLI-managed skills installed."
+        return
+    fi
+    echo "Updating CLI-managed skills..."
+    while IFS= read -r name; do
+        echo "  Updating ${name}..."
+        cmd_install "$name" || echo "  warning: failed to update ${name}, skipping"
+    done <<< "$names"
+    echo "Done."
+}
+
 # ── Dispatch ─────────────────────────────────────────────────────────────────
 
 ensure_dirs
@@ -283,6 +308,7 @@ case "${1:-}" in
     add)     cmd_add "${2:-}" ;;
     list)    cmd_list ;;
     install) cmd_install "${2:-}" ;;
+    update)  cmd_update ;;
     remove)  cmd_remove "${2:-}" ;;
     sources) cmd_sources ;;
     *)
