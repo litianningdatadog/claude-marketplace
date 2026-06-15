@@ -283,7 +283,7 @@ import json, sys
 with open(sys.argv[1]) as f:
     data = json.load(f)
 for i in data['installed']:
-    print(i['name'])
+    print(f"{i['source']}/{i['name']}")
 PYEOF
 )
     if [ -z "$names" ]; then
@@ -291,9 +291,9 @@ PYEOF
         return
     fi
     echo "Updating CLI-managed skills..."
-    while IFS= read -r name; do
-        echo "  Updating ${name}..."
-        cmd_install "$name" || echo "  warning: failed to update ${name}, skipping"
+    while IFS= read -r qualified; do
+        echo "  Updating ${qualified##*/}..."
+        cmd_install "$qualified" || echo "  warning: failed to update ${qualified##*/}, skipping"
     done <<< "$names"
     echo "Done."
 }
