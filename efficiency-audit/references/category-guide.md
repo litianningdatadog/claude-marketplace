@@ -52,7 +52,7 @@ ls ~/.claude/skills/hook-doctor/SKILL.md 2>/dev/null && echo "installed" || echo
   radius, and applies fixes with explicit opt-in.
 - **Not installed** → surface in Phase 3:
   > "Hook errors were found but the `hook-doctor` skill is not installed. Install it from
-  > the [claude-skills repo](https://github.com/litianningdatadog/claude-skills) by copying
+  > the [claude-marketplace repo](https://github.com/litianningdatadog/claude-marketplace) by copying
   > `hook-doctor/` to `~/.claude/skills/`, then re-run `/efficiency-audit`."
 
 Errors are historical — they persist until they age out of the `--days` window. After

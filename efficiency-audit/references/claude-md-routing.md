@@ -30,7 +30,7 @@ Present the recommendation and wait for confirmation before adding to the checkl
 > A) All projects — `~/.claude/CLAUDE.md` ← recommended / not recommended (reason)
 > B) Current project only — `<path>/CLAUDE.md` ← recommended / not recommended (reason)
 >
-> Seen in: `dd-trace-js` (8×), `claude-skills` (1×). Which scope fits best?"
+> Seen in: `dd-trace-js` (8×), `claude-marketplace` (1×). Which scope fits best?"
 
 For a clear global recommendation:
 > "A) `~/.claude/CLAUDE.md` ← **recommended** (seen across 5 projects — looks like a general habit)
