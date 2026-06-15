@@ -1,0 +1,325 @@
+#!/usr/bin/env bash
+# claude-skills — plugin marketplace CLI for Claude Code
+# Usage: claude-skills <command> [args]
+
+set -euo pipefail
+
+MARKETPLACE_DIR="${HOME}/.claude/marketplace"
+SKILLS_DIR="${HOME}/.claude/skills"
+SOURCES_FILE="${MARKETPLACE_DIR}/sources.json"
+INSTALLED_FILE="${MARKETPLACE_DIR}/installed.json"
+TMP_DIR="${MARKETPLACE_DIR}/tmp"
+SUPPORTED_SCHEMA_VERSION=1
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+die() { echo "error: $*" >&2; exit 1; }
+
+ensure_dirs() {
+    mkdir -p "$MARKETPLACE_DIR" "$SKILLS_DIR" "$TMP_DIR"
+}
+
+init_sources() {
+    [ -f "$SOURCES_FILE" ] || echo '{"sources":[]}' > "$SOURCES_FILE"
+}
+
+init_installed() {
+    [ -f "$INSTALLED_FILE" ] || echo '{"installed":[]}' > "$INSTALLED_FILE"
+}
+
+# ── cmd: sources ──────────────────────────────────────────────────────────────
+
+cmd_sources() {
+    init_sources
+    python3 - "$SOURCES_FILE" << 'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+sources = data.get('sources', [])
+if not sources:
+    print('No sources registered.')
+else:
+    for s in sources:
+        print(f"{s['name']}  {s['registry_url']}")
+PYEOF
+}
+
+# ── cmd: add ─────────────────────────────────────────────────────────────────
+
+cmd_add() {
+    local url="${1:-}"
+    [ -n "$url" ] || die "Usage: claude-skills add <registry-url>"
+    ensure_dirs
+    init_sources
+
+    # Fetch registry to validate schema_version and get repo_url
+    local tmpfile
+    tmpfile=$(mktemp "${TMP_DIR}/registry_validate.XXXXXX.json")
+    trap 'rm -f "$tmpfile"' RETURN
+    curl -fsSL "$url" -o "$tmpfile" || die "Failed to fetch registry from ${url}"
+
+    python3 - "$SOURCES_FILE" "$tmpfile" "$url" "$SUPPORTED_SCHEMA_VERSION" << 'PYEOF'
+import json, sys
+from datetime import datetime, timezone
+
+sources_file, reg_file, url, supported_ver = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+with open(reg_file) as f:
+    reg = json.load(f)
+schema_ver = reg.get('schema_version', 0)
+if schema_ver != supported_ver:
+    print(f"error: unsupported registry schema_version {schema_ver} (expected {supported_ver})", file=sys.stderr)
+    sys.exit(1)
+
+repo_url = reg.get('source', '')
+from urllib.parse import urlparse
+host = urlparse(url).netloc
+name = host.split('.')[0] if '.' in host else host
+
+with open(sources_file) as f:
+    data = json.load(f)
+for s in data['sources']:
+    if s['registry_url'] == url:
+        print(f"Source '{name}' already registered.")
+        sys.exit(0)
+
+data['sources'].append({
+    'name': name,
+    'registry_url': url,
+    'repo_url': repo_url,
+    'added_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+})
+with open(sources_file, 'w') as f:
+    json.dump(data, f, indent=2)
+print(f"Added source: {name}  ({url})")
+PYEOF
+}
+
+# ── cmd: list ────────────────────────────────────────────────────────────────
+
+cmd_list() {
+    init_sources
+    python3 - "$SOURCES_FILE" << 'PYEOF'
+import json, sys, urllib.request
+sources_file = sys.argv[1]
+with open(sources_file) as f:
+    data = json.load(f)
+sources = data.get('sources', [])
+if not sources:
+    print("No sources registered. Run: claude-skills add <url>")
+    sys.exit(0)
+
+all_skills = []
+for source in sources:
+    try:
+        with urllib.request.urlopen(source['registry_url'], timeout=10) as resp:
+            registry = json.loads(resp.read())
+        for skill in registry.get('skills', []):
+            all_skills.append({'source': source['name'], **skill})
+    except Exception as e:
+        print(f"warning: failed to fetch {source['registry_url']}: {e}", file=sys.stderr)
+
+name_counts = {}
+for s in all_skills:
+    name_counts[s['name']] = name_counts.get(s['name'], 0) + 1
+
+for s in all_skills:
+    qualified = name_counts[s['name']] > 1
+    display = f"{s['source']}/{s['name']}" if qualified else s['name']
+    ver = f" ({s['version']})" if s.get('version') else ''
+    print(f"{display}{ver}")
+    print(f"  {s['description'][:100]}")
+    print()
+PYEOF
+}
+
+# ── cmd: install ──────────────────────────────────────────────────────────────
+
+cmd_install() {
+    local arg="${1:-}"
+    [ -n "$arg" ] || die "Usage: claude-skills install [source/]<name>"
+    ensure_dirs
+    init_sources
+    init_installed
+    python3 - "$SOURCES_FILE" "$INSTALLED_FILE" "$SKILLS_DIR" "$TMP_DIR" "$arg" << 'PYEOF'
+import json, os, sys, shutil, tarfile, urllib.request
+from datetime import datetime, timezone
+
+sources_file, installed_file, skills_dir, tmp_dir, arg = sys.argv[1:]
+
+with open(sources_file) as f:
+    sources_data = json.load(f)
+
+matches = []
+for source in sources_data['sources']:
+    try:
+        with urllib.request.urlopen(source['registry_url'], timeout=10) as resp:
+            registry = json.loads(resp.read())
+    except Exception as e:
+        print(f"warning: failed to fetch {source['registry_url']}: {e}", file=sys.stderr)
+        continue
+    for skill in registry.get('skills', []):
+        qualified = f"{source['name']}/{skill['name']}"
+        if arg in (skill['name'], qualified):
+            matches.append({'skill': skill, 'source': source,
+                            'qualified': qualified,
+                            'registry_updated_at': registry.get('updated_at', '')})
+
+if not matches:
+    print(f"error: skill '{arg}' not found", file=sys.stderr); sys.exit(1)
+if len(matches) > 1:
+    names = ', '.join(m['qualified'] for m in matches)
+    print(f"error: '{arg}' is ambiguous: {names}", file=sys.stderr)
+    print(f"Try: claude-skills install {matches[0]['qualified']}", file=sys.stderr)
+    sys.exit(1)
+
+m = matches[0]
+skill, source = m['skill'], m['source']
+skill_name, skill_path = skill['name'], skill['path']
+dest = os.path.join(skills_dir, skill_name)
+
+with open(installed_file) as f:
+    installed_data = json.load(f)
+is_managed = any(i['name'] == skill_name for i in installed_data['installed'])
+if os.path.exists(dest) and not is_managed:
+    print(f"warning: {dest} exists but was not installed by claude-skills — replacing")
+
+repo_url = source['repo_url'].rstrip('/')
+repo_name = repo_url.split('/')[-1]
+tarball_url = f"{repo_url}/archive/refs/heads/main.tar.gz"
+
+tarball_path = os.path.join(tmp_dir, f"{skill_name}.tar.gz")
+extract_tmp = os.path.join(tmp_dir, f"{skill_name}_extract")
+try:
+    print(f"Downloading {skill_name} from {source['name']}...")
+    with urllib.request.urlopen(tarball_url, timeout=60) as resp:
+        with open(tarball_path, 'wb') as f:
+            f.write(resp.read())
+
+    os.makedirs(extract_tmp, exist_ok=True)
+    prefix = f"{repo_name}-main/{skill_path}/"
+
+    with tarfile.open(tarball_path, 'r:gz') as tf:
+        members = []
+        for member in tf.getmembers():
+            if not member.name.startswith(prefix):
+                continue
+            member.name = member.name[len(f"{repo_name}-main/"):]
+            # Guard against path traversal in untrusted tarballs
+            if os.path.isabs(member.name) or '..' in member.name.split('/'):
+                continue
+            members.append(member)
+        try:
+            tf.extractall(extract_tmp, members=members, filter='fully_trusted')
+        except TypeError:
+            tf.extractall(extract_tmp, members=members)
+
+    extracted = os.path.join(extract_tmp, skill_path)
+    if not os.path.isdir(extracted):
+        print(f"error: skill directory '{skill_path}' not found in tarball", file=sys.stderr); sys.exit(1)
+
+    staging = os.path.join(tmp_dir, f"{skill_name}_staging")
+    if os.path.exists(staging):
+        shutil.rmtree(staging)
+    shutil.copytree(extracted, staging)
+
+    # Atomic replace: move old aside, move new into place, then remove old
+    old_backup = dest + '.old'
+    if os.path.exists(old_backup):
+        shutil.rmtree(old_backup)
+    if os.path.exists(dest):
+        shutil.move(dest, old_backup)
+    shutil.move(staging, dest)
+    if os.path.exists(old_backup):
+        shutil.rmtree(old_backup)
+
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    installed_data['installed'] = [i for i in installed_data['installed'] if i['name'] != skill_name]
+    installed_data['installed'].append({'name': skill_name, 'source': source['name'],
+                                         'installed_at': now,
+                                         'registry_updated_at': m['registry_updated_at']})
+    with open(installed_file, 'w') as f:
+        json.dump(installed_data, f, indent=2)
+
+    print(f"Installed {skill_name} → {dest}")
+    print("Open a new Claude Code session to activate the skill.")
+finally:
+    if os.path.exists(extract_tmp):
+        shutil.rmtree(extract_tmp, ignore_errors=True)
+    if os.path.exists(tarball_path):
+        os.remove(tarball_path)
+PYEOF
+}
+
+# ── cmd: remove ───────────────────────────────────────────────────────────────
+
+cmd_remove() {
+    local name="${1:-}"
+    [ -n "$name" ] || die "Usage: claude-skills remove <name>"
+    init_installed
+    local dest="${SKILLS_DIR}/${name}"
+    [ -d "$dest" ] || die "Skill not installed: ${name}"
+    python3 - "$INSTALLED_FILE" "$name" "$dest" << 'PYEOF'
+import json, shutil, sys
+path, name, dest = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path) as f:
+    data = json.load(f)
+before = len(data['installed'])
+data['installed'] = [i for i in data['installed'] if i['name'] != name]
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+shutil.rmtree(dest)
+suffix = '' if len(data['installed']) < before else ' (was not CLI-managed)'
+print(f"Removed {name}{suffix}")
+PYEOF
+}
+
+# ── cmd: update ───────────────────────────────────────────────────────────────
+
+cmd_update() {
+    init_installed
+    local names
+    names=$(python3 - "$INSTALLED_FILE" << 'PYEOF'
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+for i in data['installed']:
+    print(f"{i['source']}/{i['name']}")
+PYEOF
+)
+    if [ -z "$names" ]; then
+        echo "No CLI-managed skills installed."
+        return
+    fi
+    echo "Updating CLI-managed skills..."
+    while IFS= read -r qualified; do
+        echo "  Updating ${qualified##*/}..."
+        cmd_install "$qualified" || echo "  warning: failed to update ${qualified##*/}, skipping"
+    done <<< "$names"
+    echo "Done."
+}
+
+# ── Dispatch ─────────────────────────────────────────────────────────────────
+
+ensure_dirs
+init_sources
+init_installed
+
+case "${1:-}" in
+    add)     cmd_add "${2:-}" ;;
+    list)    cmd_list ;;
+    install) cmd_install "${2:-}" ;;
+    update)  cmd_update ;;
+    remove)  cmd_remove "${2:-}" ;;
+    sources) cmd_sources ;;
+    *)
+        echo "claude-skills — plugin marketplace CLI for Claude Code"
+        echo ""
+        echo "Usage:"
+        echo "  claude-skills add <registry-url>    Register a marketplace source"
+        echo "  claude-skills list                  List available skills"
+        echo "  claude-skills install <name>        Install a skill"
+        echo "  claude-skills update                Update all CLI-installed skills"
+        echo "  claude-skills remove <name>         Remove an installed skill"
+        echo "  claude-skills sources               List registered sources"
+        ;;
+esac
