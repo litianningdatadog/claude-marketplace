@@ -25,12 +25,12 @@ Applies to CLAUDE.md rules drafted from transcript patterns (`corrections`,
 - Karpathy merge (Phase 5) — targets whichever CLAUDE.md the user selects
 - File bloat remediation — routing determined by which file is over the threshold
 
-For each transcript-derived rule, **always ask the user to confirm the target file**
-before adding it to the checklist. Use the data signals to form a recommendation, but
-never route silently — writing to `~/.claude/CLAUDE.md` affects every future session
+When **both** files exist, always ask the user to confirm the target file before adding
+it to the checklist. Use the data signals to form a recommendation, but never route
+silently in this case — writing to `~/.claude/CLAUDE.md` affects every future session
 across all projects and requires explicit consent.
 
-## Forming a recommendation
+## Forming a recommendation (both files present)
 
 Use the data to suggest a scope, then present it to the user:
 
@@ -40,7 +40,7 @@ Use the data to suggest a scope, then present it to the user:
   `top_project` accounts for ≥ 70% of matches and the rule reads as repo-specific behaviour.
 - **No strong recommendation** when: 2–3 projects, no dominant one, or data is thin.
 
-## Prompt format (always required)
+## Prompt format (required when both files exist)
 
 Present the recommendation and wait for confirmation before adding to the checklist:
 
