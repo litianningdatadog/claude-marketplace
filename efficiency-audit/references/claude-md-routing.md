@@ -1,5 +1,23 @@
 # Routing Proposed Rules to the Right CLAUDE.md
 
+## Detect which files exist (always run first)
+
+Before forming any recommendation, check which CLAUDE.md files are present:
+
+```bash
+[ -f ~/.claude/CLAUDE.md ] && echo "global: yes" || echo "global: no"
+[ -f .claude/CLAUDE.md ]   && echo "project (.claude/): yes" || echo "project (.claude/): no"
+[ -f CLAUDE.md ]           && echo "project (root): yes"     || echo "project (root): no"
+```
+
+Use the results to constrain the options shown to the user:
+- If **only** the global file exists → route there directly, no prompt needed.
+- If **only** a project file exists → route there directly, no prompt needed.
+- If **both** exist → show the A/B prompt below and wait for the user to choose.
+- If **neither** exists → ask the user which to create before proceeding.
+
+---
+
 Applies to CLAUDE.md rules drafted from transcript patterns (`corrections`,
 `missing_context`, `slow_start_context`). Does **not** apply to:
 - `settings.json` / hook changes (use `hookify:configure`)
