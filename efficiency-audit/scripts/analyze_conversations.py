@@ -591,7 +591,7 @@ def main():
     for f in files:
         try:
             sess = extract_session_data(f)
-            if sess["user_messages"]:
+            if sess["user_messages"] or sess["tool_failures"] or sess["hook_errors"]:
                 sessions.append(sess)
         except Exception as e:
             print(f"  Warning: could not parse {f}: {e}", file=sys.stderr)

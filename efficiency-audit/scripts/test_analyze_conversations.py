@@ -456,6 +456,24 @@ class ToolFailureExtractionTests(unittest.TestCase):
         self.assertEqual(sess["tool_failures"][0]["tool"], "?")
 
 
+    def test_tool_only_session_included_in_analysis(self):
+        # A session with tool failures but no user messages must not be dropped.
+        # Subagent sessions often have only tool calls with no conversational input.
+        path = write_session([
+            assistant_with_tool_use("id1", "Edit"),
+            user_with_tool_result_error("id1", "<tool_use_error>File has not been read yet.</tool_use_error>"),
+        ])
+        sessions = [ac.extract_session_data(path)]
+        # Verify extract_session_data captures the failure even with no user_messages
+        self.assertEqual(len(sessions[0]["tool_failures"]), 1)
+        self.assertEqual(sessions[0]["user_messages"], [])
+        # Verify analyze() includes it (simulate the main() guard)
+        included = [s for s in sessions if s["user_messages"] or s["tool_failures"] or s["hook_errors"]]
+        self.assertEqual(len(included), 1)
+        findings = ac.analyze(included)
+        self.assertEqual(findings["tool_failures"][0]["count"], 1)
+
+
 class ClassifyToolErrorTests(unittest.TestCase):
     def test_unread_write(self):
         self.assertEqual(ac.classify_tool_error("Edit", "File has not been read yet. Read it first."), "unread_write")
