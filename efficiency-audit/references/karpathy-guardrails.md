@@ -1,53 +1,59 @@
 # Karpathy Behavioral Guardrails
 
-These four principles govern how the efficiency-audit skill operates. They are derived from
-Andrej Karpathy's observations on the most common LLM failure modes in agentic coding
-workflows. They apply to every phase of the audit, not just Phase 5.
-
 Source: https://github.com/multica-ai/andrej-karpathy-skills/blob/main/CLAUDE.md
 
-## 1. Think Before Coding (no silent assumptions)
+The four principles govern every phase of the audit — not just Phase 5.
 
-Before executing any action that writes files or runs scripts, explicitly state what you
-assume the user wants. If the request is ambiguous, stop and ask — do not guess and proceed.
-Present tradeoffs when multiple approaches exist. Flag any assumption as `[ASSUMED: ...]`
-so the user can correct it.
+1. **Think Before Coding** — State assumptions before acting; stop and ask when ambiguous; flag with `[ASSUMED: ...]`.
+2. **Simplicity First** — Write only what was asked; no speculative features, extra abstraction, or configurability.
+3. **Surgical Changes** — Touch only what the task requires; note but don't fix unrelated issues.
+4. **Goal-Driven Execution** — Define a verifiable outcome before acting; don't declare complete until it can be observed.
 
-## 2. Simplicity First (minimum viable change)
-
-Write or suggest only the minimum required. Explicitly forbidden:
-- Speculative features ("this might be useful later")
-- Unrequested "flexibility" (extra parameters, abstraction layers, configurability)
-- Bloated explanations when a one-liner suffices
-
-When drafting CLAUDE.md rules, one tight sentence beats a paragraph.
-
-## 3. Surgical Changes (touch only what you must)
-
-Forbidden without explicit instruction:
-- "Improving" adjacent code or rules that are functional
-- Reformatting unrelated sections of CLAUDE.md
-- Refactoring existing rules while adding new ones
-
-If something outside the immediate task looks wrong, note it as an observation — do not fix
-it unilaterally.
-
-## 4. Goal-Driven Execution (verifiable outcomes)
-
-Transform vague tasks into verifiable goals before acting. Instead of "improve this rule",
-define what "improved" looks like: "the rule prevents the top correction pattern from
-recurring". For code changes: write a test that reproduces the problem first, then make it
-pass. Do not declare a task complete until the outcome can be observed or measured.
+The merge procedure (Phase 5) fetches the full upstream text from the source URL above for diffing against the user's CLAUDE.md.
 
 ## Flagging violations
 
-If the audit output or any generated content violates these four rules (e.g. a proposed
+If the audit output or any generated content violates the four principles (e.g. a proposed
 CLAUDE.md block that adds speculative rules, or a Phase 4 change that touches more than was
 asked), call it out explicitly before proceeding: `[GUARDRAIL: ...]`.
 
 ---
 
-## Phase 5 — Merge procedure (if user agrees)
+## Phase 5
+
+### Evidence check
+
+Scan `corrections` and `missing_context` example strings for these signals:
+
+| Signal keyword (substring, case-insensitive) | Guardrail |
+|---|---|
+| "assumed", "don't guess", "should have asked", "clarify first" | Think Before Coding |
+| "over-engineered", "too much", "didn't ask for", "not requested" | Simplicity First |
+| "unrelated", "why did you change", "only change X", "didn't touch" | Surgical Changes |
+| "does it work", "actually test", "didn't verify", "not confirmed" | Goal-Driven Execution |
+
+Each matching example string = 1 hit toward its guardrail — accumulate across all groups; ignore `count` field.
+
+### Trigger threshold
+
+**Minimum hits to offer guardrails: 2**
+
+Raise to reduce false positives in high-volume audits; lower for earlier detection of emerging patterns.
+
+### Offer templates
+
+When one guardrail triggers:
+> "The audit found [N] corrections about [pattern] — the [Guardrail Name] principle directly
+> addresses this. Would you like me to merge it into your `CLAUDE.md`? I'll produce a
+> structured, deduplicated result — not a blind append."
+
+When multiple guardrails trigger:
+> "The audit found evidence for [N] Karpathy guardrails: [N1] corrections about [pattern1]
+> (→ [Guardrail 1]), and [N2] about [pattern2] (→ [Guardrail 2]). Would you like me to
+> merge the relevant ones into your `CLAUDE.md`? I'll produce a structured, deduplicated
+> result — not a blind append."
+
+### Merge procedure
 
 1. **Read** the user's current `CLAUDE.md` (global `~/.claude/CLAUDE.md` or project-level).
 2. **Fetch** the Karpathy guidelines from the source URL above (WebFetch; fall back to asking
