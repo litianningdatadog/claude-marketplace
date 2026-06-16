@@ -13,7 +13,7 @@ python3 "${PLUGIN_ROOT}/scripts/qn.py" <note text> [#tag …] [--tag T]
 Anything that isn't a management verb is the note. Confirm id + title back in one line.
 
 - Tags: inline `#hashtags` in the text or `--tag T` flags (normalized: lowercased, `#` stripped, spaces→`-`). In a raw shell, unquoted `#` is a comment — prefer `--tag` or quote the text.
-- Time expressions ("by Friday", "tomorrow 5pm") → convert to ISO-8601 UTC via `qn update <id> --due 2026-06-13T17:00:00Z`.
+- Time expressions ("by Friday", "tomorrow 5pm") → compute the ISO-8601 UTC instant and pass via `qn update <id> --due <YYYY-MM-DDThh:mm:ssZ>`.
 - Suggest 1–3 tags from context, but don't block capture on tagging.
 - May arrive via `/btw qn …` while mid-task — handle it in the same turn.
 
