@@ -447,6 +447,20 @@ class ToolFailureExtractionTests(unittest.TestCase):
         findings = ac.analyze(sessions)
         self.assertGreaterEqual(findings["tool_failures"][0]["count"], findings["tool_failures"][1]["count"])
 
+    def test_tool_failure_example_is_single_line(self):
+        # Multi-line error text (e.g. test runner output) must be collapsed so it
+        # does not break the text report layout.
+        multiline_error = "Exit code 1\n..EEEE.F..\n======\nERROR: test_compute_deltas"
+        path = write_session([
+            assistant_with_tool_use("id9", "Bash"),
+            user_with_tool_result_error("id9", multiline_error),
+        ])
+        sessions = [ac.extract_session_data(path)]
+        findings = ac.analyze(sessions)
+        example = findings["tool_failures"][0]["examples"][0]
+        self.assertNotIn("\n", example)
+        self.assertNotIn("  ", example)
+
     def test_tool_unknown_when_id_not_matched(self):
         # tool_result references an ID that never appeared in a tool_use block
         path = write_session([

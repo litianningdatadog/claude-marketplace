@@ -415,7 +415,7 @@ def _aggregate_tool_failures(sessions: list[dict]) -> list[dict]:
             g["count"] += 1
             g["_sessions"].add(sess["session_id"])
             if len(g["examples"]) < 3:
-                g["examples"].append(tf["error_text"])
+                g["examples"].append(" ".join(tf["error_text"].split()))
     out = [
         {
             "tool": g["tool"],
