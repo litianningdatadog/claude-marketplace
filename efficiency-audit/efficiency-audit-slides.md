@@ -1,11 +1,6 @@
-# efficiency-audit: Slide Content
+# efficiency-audit
 
-> Feed this file to Gemini (or any LLM) with the prompt:
-> "Generate a presentation deck from these slide notes. Each `##` heading is a slide title; bullet points are speaker notes or body text."
-
----
-
-## Slide 1 — Title
+## What
 
 **efficiency-audit**
 *Stop repeating yourself. Let Claude learn from your conversations.*
@@ -15,7 +10,7 @@
 
 ---
 
-## Slide 2 — The Problem: Claude Keeps Forgetting
+## The Problem: Claude Keeps Forgetting
 
 **You say the same things every session. Claude doesn't remember.**
 
@@ -28,7 +23,7 @@
 
 ---
 
-## Slide 3 — What Is efficiency-audit?
+## What Is efficiency-audit?
 
 **A Claude Code skill that audits your conversation history and proposes concrete fixes.**
 
@@ -41,7 +36,7 @@
 
 ---
 
-## Slide 4 — Why This Matters
+## Why This Matters
 
 **Every repeated correction is a tax on your attention — and your tokens.**
 
@@ -56,7 +51,7 @@
 
 ---
 
-## Slide 5 — The 5-Phase Pipeline
+## The 5-Phase Pipeline
 
 **analyze → synthesize → report → apply → (opt-in) guardrails**
 
@@ -72,7 +67,7 @@ Each phase is skippable or adjustable. The tool meets you where you are.
 
 ---
 
-## Slide 6 — Phase 1: Analyze (What Gets Scanned)
+## Phase 1: Analyze (What Gets Scanned)
 
 **Five pattern categories extracted from your real conversation history:**
 
@@ -86,7 +81,7 @@ Each phase is skippable or adjustable. The tool meets you where you are.
 
 ---
 
-## Slide 7 — Phase 2 & 3: Synthesize and Report
+## Phase 2 & 3: Synthesize and Report
 
 **Raw patterns → ranked, human-readable improvement plan**
 
@@ -111,7 +106,7 @@ Each phase is skippable or adjustable. The tool meets you where you are.
 
 ---
 
-## Slide 8 — Phase 4: Apply (Safe by Design)
+## Phase 4: Apply (Safe by Design)
 
 **Rules are written with idempotent marker blocks — re-running never duplicates.**
 
@@ -130,7 +125,7 @@ Always Read a file before Edit or Write.
 
 ---
 
-## Slide 9 — SOSA™ Governance
+## SOSA™ Governance
 
 **SOSA™ — Supervised Orchestrated Secured Agents**
 
@@ -145,7 +140,7 @@ The skill is governed by four non-negotiable rules:
 
 ---
 
-## Slide 10 — Phase 5: Karpathy Guardrails (Opt-In)
+## Phase 5: Karpathy Guardrails (Opt-In)
 
 **Andrej Karpathy's four behavioral principles, merged into your CLAUDE.md.**
 
@@ -162,7 +157,7 @@ The four principles:
 
 ---
 
-## Slide 11 — Baseline Tracking and Deltas
+## Baseline Tracking and Deltas
 
 **Audit results improve over time — and you can measure it.**
 
@@ -182,7 +177,7 @@ MISSING_CONTEXT (8 matches, was 14, -43% ↓)
 
 ---
 
-## Slide 12 — How to Use It
+## How to Use It
 
 **Install once. Run whenever friction accumulates.**
 
@@ -206,7 +201,7 @@ python3 scripts/analyze_conversations.py --days 30 --output text 2>/dev/null
 
 ---
 
-## Slide 13 — Architecture Overview
+## Architecture Overview
 
 **Three layers: skill, scripts, references**
 
@@ -230,7 +225,7 @@ efficiency-audit/
 
 ---
 
-## Slide 14 — Key Design Decisions
+## Key Design Decisions
 
 **Why these choices were made:**
 
@@ -245,7 +240,7 @@ efficiency-audit/
 
 ---
 
-## Slide 15 — Known Limitations & Roadmap
+## Known Limitations & Roadmap
 
 **What's not supported yet:**
 
@@ -266,7 +261,7 @@ Claude Code allows `CLAUDE.md` to include external files using `@path/to/file` s
 
 ---
 
-## Slide 16 — Summary
+## Summary
 
 **efficiency-audit in one sentence:**
 
