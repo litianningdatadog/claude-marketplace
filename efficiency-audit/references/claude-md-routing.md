@@ -1,5 +1,23 @@
 # Routing Proposed Rules to the Right CLAUDE.md
 
+## Detect which files exist (always run first)
+
+Before forming any recommendation, check which CLAUDE.md files are present:
+
+```bash
+[ -f ~/.claude/CLAUDE.md ] && echo "global: yes" || echo "global: no"
+[ -f .claude/CLAUDE.md ]   && echo "project (.claude/): yes" || echo "project (.claude/): no"
+[ -f CLAUDE.md ]           && echo "project (root): yes"     || echo "project (root): no"
+```
+
+Use the results to constrain the options shown to the user:
+- If **only** the global file exists → route there directly, no prompt needed.
+- If **only** a project file exists → route there directly, no prompt needed.
+- If **both** exist → show the A/B prompt below and wait for the user to choose.
+- If **neither** exists → ask the user which to create before proceeding.
+
+---
+
 Applies to CLAUDE.md rules drafted from transcript patterns (`corrections`,
 `missing_context`, `slow_start_context`). Does **not** apply to:
 - `settings.json` / hook changes (use `hookify:configure`)
@@ -7,12 +25,12 @@ Applies to CLAUDE.md rules drafted from transcript patterns (`corrections`,
 - Karpathy merge (Phase 5) — targets whichever CLAUDE.md the user selects
 - File bloat remediation — routing determined by which file is over the threshold
 
-For each transcript-derived rule, **always ask the user to confirm the target file**
-before adding it to the checklist. Use the data signals to form a recommendation, but
-never route silently — writing to `~/.claude/CLAUDE.md` affects every future session
+When **both** files exist, always ask the user to confirm the target file before adding
+it to the checklist. Use the data signals to form a recommendation, but never route
+silently in this case — writing to `~/.claude/CLAUDE.md` affects every future session
 across all projects and requires explicit consent.
 
-## Forming a recommendation
+## Forming a recommendation (both files present)
 
 Use the data to suggest a scope, then present it to the user:
 
@@ -22,7 +40,7 @@ Use the data to suggest a scope, then present it to the user:
   `top_project` accounts for ≥ 70% of matches and the rule reads as repo-specific behaviour.
 - **No strong recommendation** when: 2–3 projects, no dominant one, or data is thin.
 
-## Prompt format (always required)
+## Prompt format (required when both files exist)
 
 Present the recommendation and wait for confirmation before adding to the checklist:
 

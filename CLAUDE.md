@@ -50,6 +50,10 @@ A plugin lives in its own top-level directory and consists of:
   user transcripts of unknown shape.
 - When a skill mutates user state (CLAUDE.md, memory, `settings.json`, hooks), apply
   changes only after explicit user approval, lowest-blast-radius first.
+- **Skills that write to CLAUDE.md must first detect which files exist** (`~/.claude/CLAUDE.md`
+  and project-level), then route silently if only one exists, or prompt the user to choose
+  if both exist. See `efficiency-audit/references/claude-md-routing.md` for the canonical
+  detection commands and prompt format.
 - When editing any `SKILL.md` or file under `references/`, prefer moving verbose detail
   into `references/` rather than expanding `SKILL.md` inline. `SKILL.md` should remain a
   concise procedure with pointers to reference files; all lengthy detail lives in `references/`.
