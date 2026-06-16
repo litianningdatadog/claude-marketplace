@@ -1,22 +1,34 @@
 {
   "name": "litianningdatadog-marketplace",
-  "description": "Claude Code skills for workflow automation, hook repair, and quick notes.",
   "owner": { "name": "Tianning Li" },
+  "metadata": {
+    "description": "Claude Code skills for workflow automation, hook repair, and quick notes.",
+    "version": "1.0.0"
+  },
   "plugins": [
     {
       "name": "efficiency-audit",
       "source": "./efficiency-audit",
-      "description": "Analyzes recent Claude Code transcripts to surface recurring inefficiencies."
+      "description": "Analyzes recent Claude Code transcripts to surface recurring inefficiencies.",
+      "version": "1.0.0",
+      "homepage": "https://github.com/litianningdatadog/claude-marketplace",
+      "repository": "https://github.com/litianningdatadog/claude-marketplace"
     },
     {
       "name": "hook-doctor",
       "source": "./hook-doctor",
-      "description": "Inspects and repairs installed plugin hook configurations."
+      "description": "Inspects and repairs installed plugin hook configurations.",
+      "version": "1.0.0",
+      "homepage": "https://github.com/litianningdatadog/claude-marketplace",
+      "repository": "https://github.com/litianningdatadog/claude-marketplace"
     },
     {
       "name": "quicknotes",
       "source": "./quicknotes",
-      "description": "Low-friction quick-note capture and management for Claude Code."
+      "description": "Low-friction quick-note capture and management for Claude Code.",
+      "version": "1.0.0",
+      "homepage": "https://github.com/litianningdatadog/claude-marketplace",
+      "repository": "https://github.com/litianningdatadog/claude-marketplace"
     }
   ]
 }
