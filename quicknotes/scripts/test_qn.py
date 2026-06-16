@@ -129,9 +129,33 @@ class CLITests(unittest.TestCase):
         # Raw ISO date-time separator (digit T digit) must not appear
         self.assertIsNone(re.search(r'\d{2}T\d{2}', created_val),
                           "Created should not contain raw ISO 'T' separator")
-        # Raw UTC 'Z' suffix must not appear
+        # Raw ISO date-time separator and UTC 'Z' suffix must not appear
         self.assertIsNone(re.search(r'\d{2}T\d{2}', due_val),
                           "Due should not contain raw ISO 'T' separator")
+        self.assertFalse(due_val.strip().endswith("Z"),
+                         "Due should not end with raw UTC 'Z' suffix")
+
+
+class DisplayTimeTests(unittest.TestCase):
+    def test_utc_string_converts_to_local(self):
+        result = qn._display_time("2026-06-16T20:00:00Z")
+        # Raw ISO date-time separator must not appear
+        self.assertIsNone(re.search(r'\d{2}T\d{2}', result),
+                          "Should not contain raw ISO 'T' separator")
+        # Raw UTC 'Z' suffix must not appear
+        self.assertFalse(result.strip().endswith("Z"),
+                         "Should not end with raw UTC 'Z' suffix")
+        # Should be a non-empty string
+        self.assertTrue(result)
+
+    def test_none_returns_none(self):
+        self.assertIsNone(qn._display_time(None))
+
+    def test_empty_string_returns_empty(self):
+        self.assertEqual(qn._display_time(""), "")
+
+    def test_malformed_string_returns_as_is(self):
+        self.assertEqual(qn._display_time("not-a-date"), "not-a-date")
 
 
 if __name__ == "__main__":
