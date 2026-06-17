@@ -431,12 +431,17 @@ def _aggregate_tool_failures(sessions: list[dict]) -> list[dict]:
 
 
 def _dedupe_hook_errors(errors: list[dict]) -> list[dict]:
-    seen, out = set(), []
+    seen: dict[str, dict] = {}
     for he in errors:
         key = he.get("command", "") or he.get("hook_name", "")
         if key not in seen:
-            seen.add(key)
-            out.append(he)
+            seen[key] = {**he, "sessions": set()}
+        if he.get("session"):
+            seen[key]["sessions"].add(he["session"])
+    out = []
+    for entry in seen.values():
+        entry["session_count"] = len(entry.pop("sessions"))
+        out.append(entry)
     return out
 
 

@@ -11,69 +11,82 @@ Ask: "Standard audit, or specific areas to focus on?" Elevate ad-hoc requirement
 
 ```bash
 PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/efficiency-audit/*/ 2>/dev/null | head -1)
-python3 "${PLUGIN_ROOT}/scripts/analyze_conversations.py" \
-  --days 30 --project "$(basename "$PWD")" --output json 2>/dev/null \
+python3 "${PLUGIN_ROOT}/scripts/analyze_conversations.py" --days 30 --project "$(basename "$PWD")" --output json 2>/dev/null \
 | python3 "${PLUGIN_ROOT}/scripts/synthesize_findings.py" 2>/dev/null
 ```
 
-If synthesis succeeds → `recommendations` has `proposed_rule`, `estimated_tokens_saved`, `scope`, `evidence` — skip Phase 2, go to Phase 3.
-If synthesis fails → re-run without the `synthesize_findings.py` pipe (raw JSON output) and proceed to Phase 2.
+Synthesis succeeds → Phase 3. Fails → re-run without pipe, go to Phase 2.
+
+Score separately (independent exit code — never combine with synthesis above):
 
 ```bash
 MEMORY_MD=$(python3 "${PLUGIN_ROOT}/scripts/resolve_memory_path.py" 2>/dev/null)
-python3 "${PLUGIN_ROOT}/scripts/score_efficiency.py" \
-  .claude/CLAUDE.md ~/.claude/CLAUDE.md "$MEMORY_MD" 2>/dev/null
+python3 "${PLUGIN_ROOT}/scripts/score_efficiency.py" .claude/CLAUDE.md ~/.claude/CLAUDE.md "$MEMORY_MD" 2>/dev/null
 ```
 
-Score < 0.5 → warning; 0.0 → Critical Context Blocker (run recipe-book before adding rules).
-Also check terminal title: `references/terminal-title-check.md`.
+Score < 0.5 → warning; 0.0 → run `references/recipe-book.md` first. Check: `references/terminal-title-check.md`.
 
 ## Phase 2: Synthesize
 
-Read `references/category-guide.md` for category interpretation and rule-drafting guidance.
+Read `references/category-guide.md`.
 
 ## Phase 3: Report
 
-- `corrections` count ≥ 3 → draft CLAUDE.md rule from `examples` + `preceding_action`.
-- `missing_context` sessions ≥ 3 → write candidate CLAUDE.md fact.
-- `tool_failures` count ≥ 2 → draft a CLAUDE.md rule preventing the error pattern (e.g. `unread_write` → "Always Read before Edit/Write").
-
-Before routing any rule, run these detection commands:
+Detect CLAUDE.md locations:
 
 ```bash
-[ -f ~/.claude/CLAUDE.md ] && echo "global: yes" || echo "global: no"
-[ -f .claude/CLAUDE.md ]   && echo "project (.claude/): yes" || echo "project (.claude/): no"
-[ -f CLAUDE.md ]           && echo "project (root): yes"     || echo "project (root): no"
+for f in ~/.claude/CLAUDE.md .claude/CLAUDE.md CLAUDE.md; do [ -f "$f" ] && echo "exists: $f"; done
 ```
 
-- Only global exists → route there silently.
-- Only project exists → route there silently.
-- **Both exist → read `references/claude-md-routing.md` for the A/B prompt format and wait for the user to choose before proceeding.**
-- Neither exists → ask the user which to create.
+One → route silently. Multiple → read `references/claude-md-routing.md`, wait for choice. None → ask.
 
-Present as: proposed rules (approve/edit/skip) → High Impact → Medium Impact → Automation Opportunities → Open Questions.
+**Always use this exact format — never a table:**
+
+```
+---
+High Impact
+Rule N — <title> (~X tokens/month)
+▎ <evidence>
+▎ Routing: A) <path> [← recommended] | B) <path>
+---
+Medium Impact  [omit if empty]
+Rule N — ...
+---
+Hook Issues  [omit if hook_errors empty; wording below]
+---
+Total: ~X tokens/month. Reply: numbers (1 3), all, skip N. Dry-run before writing.
+```
+
+**Hook Issues** — if `hook_errors` non-empty, never write "skipping" or "already handled":
+
+```bash
+ls ~/.claude/plugins/cache/litianningdatadog-marketplace/hook-doctor/*/skills/hook-doctor/SKILL.md 2>/dev/null | grep -q . && echo installed || echo not_installed
+```
+
+- not_installed → `Hook errors found. Install: claude plugin install hook-doctor@litianningdatadog-marketplace`
+- installed, not yet diagnosed → `Run /hook-doctor to scan. (Evidence: X failures, Y sessions.)`
+- installed, deferred this session → `⚠ Run /hook-doctor when ready. (Evidence: X failures, Y sessions.)`
+- installed, confirmed clean → omit section.
+
+Only cite transcript numbers (failures, sessions). Never use hook-doctor output counts.
 
 ## Phase 4: Apply
 
-Read `references/governance.md`. Plan → Act → Verify; never batch. Order: memory → CLAUDE.md → settings.json.
-Hook fixes → hand off to `hook-doctor`.
-
-Use the marker-block writer for CLAUDE.md (prevents duplicates across re-runs):
+Read `references/governance.md`. Order: memory → CLAUDE.md → settings.json. Hook fixes → `hook-doctor`.
 
 ```bash
-PLUGIN_ROOT=$(ls -dt ~/.claude/plugins/cache/litianningdatadog-marketplace/efficiency-audit/*/ 2>/dev/null | head -1)
-python3 "${PLUGIN_ROOT}/scripts/apply_rules.py" --read <path>              # see existing
-python3 "${PLUGIN_ROOT}/scripts/apply_rules.py" --dry-run <path> '["..."]' # preview
-python3 "${PLUGIN_ROOT}/scripts/apply_rules.py" <path> '["r1", "r2"]'     # write
+python3 "${PLUGIN_ROOT}/scripts/apply_rules.py" --dry-run <path> '["r1", "r2"]'
+python3 "${PLUGIN_ROOT}/scripts/apply_rules.py" <path> '["r1", "r2"]'
 ```
+
+One rule at a time: run `--dry-run`, print output, **STOP — ask "Looks right? yes / edit / skip."** Do not write until they reply in this turn. On yes: write, verify, report. Repeat.
 
 ## Phase 5: Karpathy Guardrails (opt-in)
 
-Surface the offer only if the evidence threshold in `references/karpathy-guardrails.md` is met; skip entirely if the user declines.
-If accepted, apply the guardrail checks to the Phase 4 apply plan before executing it — this phase governs the *apply decision*, not the preceding analysis or report.
+Read `references/karpathy-guardrails.md`; offer once if threshold met, skip if declined. Governs Phase 4 apply, not analysis.
 
 ## Utilities
 
 - Noise false positives: `references/noise-filters.md`
-- CLAUDE.md > 200 lines: run `references/recipe-book.md` *before* proposing rules
-- Re-run every 2–4 weeks; baseline delta confirms rules are reducing friction
+- CLAUDE.md > 200 lines: `references/recipe-book.md` first
+- Re-run every 2–4 weeks

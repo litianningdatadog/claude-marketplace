@@ -39,7 +39,17 @@ prevent the mistake pattern. E.g. unread_write → "Always Read a file before ca
 
 For corrections: draft rules from the example + preceding_action pair.
 For missing_context: write stable facts that belong in CLAUDE.md.
-For automation_candidates: propose hooks or alias commands.
+For automation_candidates: propose hooks or alias commands. Set target to "settings.json".
+
+For hook_errors (exit=127, unresolved ${CLAUDE_PLUGIN_ROOT}, etc.): these are hook
+configuration failures, NOT candidates for CLAUDE.md rules. Always set target to
+"hook-doctor" and proposed_rule to: "Run /hook-doctor to scan all hook configs for
+unquoted ${CLAUDE_PLUGIN_ROOT} paths (cause exit 127 in agent-mode) and other static
+issues." IMPORTANT: do NOT infer from session-level hook success messages
+("UserPromptSubmit hook success", "SessionStart:startup hook success") that all hooks
+are healthy — those messages only confirm specific hooks fired, not that all hook configs
+are valid. Static issues like unquoted path vars only show up under hook-doctor's scan.
+Set confidence to "medium" and note the session count in evidence.
 
 Evidence threshold: only recommend when count >= 2 or sessions >= 2.
 
@@ -121,9 +131,11 @@ def build_digest(findings: dict) -> str:
 
     hook_errors = findings.get("hook_errors", [])
     if hook_errors:
-        lines.append(f"## Hook Errors ({len(hook_errors)} unique)")
+        lines.append(f"## Hook Errors ({len(hook_errors)} unique) [may be historical — verify current state]")
         for he in hook_errors[:5]:
-            lines.append(f"- [{he.get('hook_name', '?')}] exit={he.get('exit_code')} cmd={str(he.get('command', ''))[:80]}")
+            sessions = he.get("session_count", 0)
+            sess_str = f", {sessions} session{'s' if sessions != 1 else ''}" if sessions else ""
+            lines.append(f"- [{he.get('hook_name', '?')}] exit={he.get('exit_code')}{sess_str} cmd={str(he.get('command', ''))[:80]}")
         lines.append("")
 
     return "\n".join(lines)[:MAX_DIGEST_CHARS]

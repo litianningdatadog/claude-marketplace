@@ -1,5 +1,7 @@
 # Phase 2 Category Interpretation Guide
 
+Draft thresholds: `corrections` count ≥ 3 → CLAUDE.md rule (use `examples` + `preceding_action`); `missing_context` sessions ≥ 3 → CLAUDE.md fact; `tool_failures` count ≥ 2 → CLAUDE.md rule.
+
 The script pre-clusters results into categories. Groups are sorted by frequency; the first
 entries are the highest-recurrence friction. Noise is filtered before extraction, so every
 group is real input.
@@ -57,3 +59,13 @@ ls ~/.claude/plugins/cache/litianningdatadog-marketplace/hook-doctor/*/skills/ho
 
 Errors are historical — they persist until they age out of the `--days` window. After
 fixing, a fresh session plus a small `--days` re-run confirms no new failures appear.
+
+**Already diagnosed / deferred this session:** If hook-doctor was run earlier in this
+session and the user chose to defer (option d / skip), do NOT silently omit the finding
+or say "Skipping" — that implies the issue is resolved. Instead, surface it explicitly as
+an open action item:
+
+> "⚠ Hook issues exist (N fixable) — deferred this session. Run `/hook-doctor` when ready to fix."
+
+"Deferred" means the problem is still there. "Resolved" (fixed or confirmed clean by
+hook-doctor) means it can be omitted. Never conflate the two.
