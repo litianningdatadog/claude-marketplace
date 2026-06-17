@@ -249,6 +249,7 @@ efficiency-audit/
 | `@`-imported files in `CLAUDE.md` | Score and rule routing ignore inlined content from `@path/to/file` includes | Pending |
 | Multi-workspace transcript merging | Audits are scoped to one project filter at a time | Planned |
 | Hook suggestion auto-generation | `automation_candidates` are surfaced but not wired to `hookify` automatically | Planned |
+| Multi-agent support | Transcripts from Codex (`~/.codex/`) and OpenCode are not scanned | Future |
 
 **`@` import support — why it matters:**
 
@@ -258,6 +259,12 @@ Claude Code allows `CLAUDE.md` to include external files using `@path/to/file` s
 - The audit may miss rules already expressed in an `@`-imported file, leading to false duplicate suggestions
 
 **Planned fix:** resolve `@` imports before scoring and before routing proposed rules, so the tool sees the same effective context Claude sees.
+
+**Multi-agent support — why it matters:**
+
+The audit currently only reads Claude Code transcripts (`~/.claude/projects/**/*.jsonl`). Developers increasingly use multiple coding agents in parallel — Codex stores sessions under `~/.codex/`, and OpenCode uses its own log format. Patterns that span agents (e.g. the same correction made in both Claude Code and Codex) are invisible today.
+
+**Planned approach:** add pluggable transcript adapters for each agent format, normalize them to the same event schema, and surface cross-agent patterns as a distinct finding category so rules can target the right config file per agent.
 
 ---
 
