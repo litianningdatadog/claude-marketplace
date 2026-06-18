@@ -525,6 +525,7 @@ class DeltaTrackingTests(unittest.TestCase):
             "missing_context": _groups(missing),
             "slow_start_context": _groups(slow),
             "automation_candidates": _groups(automation),
+            "git_workflow_errors": [],
             "hook_errors": [{"hook_name": "h", "exit_code": 1, "stderr": "", "command": "c"}] * hooks,
         }
         return findings

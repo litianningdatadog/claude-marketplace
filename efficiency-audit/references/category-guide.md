@@ -41,6 +41,28 @@ hooks — use the `hookify:configure` skill.
 
 See `references/terminal-title-check.md` for proposed rule text, routing, and post-apply note.
 
+## `git_workflow_errors`
+
+Messages where the user flagged a broken git operation — stale remote refs in cascade
+rebases, PRs showing unexpected file counts, out-of-date base branches, or corrective
+force-push loops. Threshold: count ≥ 2.
+
+Unlike `corrections` (which catches generic redirections), this category targets multi-step
+git command anti-patterns where a later step reads `origin/<branch>` state that an earlier
+step in the same pipeline hasn't pushed yet.
+
+**Rule pattern:** produce a CLAUDE.md *procedure block*, not a one-liner rule. The
+key invariant to encode:
+
+> In a single cascade command (reset + cherry-pick + push for multiple stacked branches),
+> reference the **local** branch name, not `origin/<branch>`. The remote tracking ref
+> is stale until after `git push`.
+>
+> CORRECT: `git reset --hard tianning.li/log-capture-2-plugin`
+> WRONG:   `git reset --hard origin/tianning.li/log-capture-2-plugin` (stale until pushed)
+
+Route to the project's CLAUDE.md if `top_project` is set; otherwise global.
+
 ## `hook_errors`
 
 Failing hooks (e.g. `exit=127`, unquoted `${CLAUDE_PLUGIN_ROOT}`). **Don't repair here.**

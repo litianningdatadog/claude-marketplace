@@ -54,6 +54,19 @@ SLOW_START_PATTERNS = [
     r"\b(always use|never use|make sure (you )?use)\b",
 ]
 
+GIT_WORKFLOW_PATTERNS = [
+    # User notices stale remote-ref or wrong base in stacked-PR cascade
+    r"\b(pr|pull request).{0,40}(shows?|has|changed|touched).{0,20}\d+\s+files\b",
+    r"\bout.of.date with (the )?base branch\b",
+    r"\b(stale|wrong|old|outdated).{0,20}(remote|ref|origin|base)\b",
+    r"\borigin/.{0,30}(stale|wrong|old)\b",
+    # User flags a bad cascade / cherry-pick / rebase that needs a redo
+    r"\b(cascade|cherry.pick|rebase).{0,40}(wrong|incorrect|redo|fix|issue|failed)\b",
+    r"\b(wrong|incorrect).{0,20}(base|parent|branch|files|diff)\b",
+    # Force-push corrective loop (repeated force-with-lease signals bad cascade)
+    r"\b(force.with.lease|force push|force-push).{0,30}(again|redo|retry|fix)\b",
+]
+
 AUTOMATION_PATTERNS = [
     r"\b(every time|always (run|check|do|use)|each time|whenever)\b",
     r"\b(after (each|every) (commit|push|build|test))\b",
@@ -293,6 +306,7 @@ def score_message(text: str) -> dict:
         "context_requests": match_patterns(text, CONTEXT_REQUEST_PATTERNS),
         "slow_start": match_patterns(text, SLOW_START_PATTERNS),
         "automation": match_patterns(text, AUTOMATION_PATTERNS),
+        "git_workflow": match_patterns(text, GIT_WORKFLOW_PATTERNS),
     }
 
 
@@ -341,6 +355,7 @@ CATEGORY_SCORE_KEY = {
     "missing_context": "context_requests",
     "slow_start_context": "slow_start",
     "automation_candidates": "automation",
+    "git_workflow_errors": "git_workflow",
 }
 
 
@@ -356,6 +371,7 @@ def analyze(sessions: list[dict]) -> dict:
         "missing_context": [],
         "slow_start_context": [],
         "automation_candidates": [],
+        "git_workflow_errors": [],
         "hook_errors": [],
         "tool_failures": [],
     }
@@ -469,7 +485,7 @@ def save_baseline(findings: dict, project_filter: str | None, path: Path = BASEL
             "saved_at": datetime.now(tz=timezone.utc).isoformat(),
             "sessions_analyzed": findings["summary"]["sessions_analyzed"],
             "category_totals": {
-                cat: sum(g["count"] for g in findings[cat])
+                cat: sum(g["count"] for g in findings.get(cat, []))
                 for cat in CATEGORY_SCORE_KEY
             },
             "hook_error_count": len(findings["hook_errors"]),
@@ -487,7 +503,7 @@ def compute_deltas(findings: dict, baseline: dict | None) -> dict:
     deltas = {}
     prev_totals = baseline.get("category_totals", {})
     for cat in CATEGORY_SCORE_KEY:
-        current = sum(g["count"] for g in findings[cat])
+        current = sum(g["count"] for g in findings.get(cat, []))
         previous = prev_totals.get(cat, 0)
         diff = current - previous
         pct = round(100 * diff / previous) if previous else None
@@ -547,6 +563,8 @@ def print_text_report(findings: dict, deltas: dict | None = None):
          "Orientation that could live in CLAUDE.md"),
         ("AUTOMATION CANDIDATES", "automation_candidates",
          "Recurring procedural intent that could become a hook"),
+        ("GIT WORKFLOW ERRORS", "git_workflow_errors",
+         "Stale remote refs, bad cascade rebases, unexpected file counts in stacked PRs"),
     ]
 
     for title, key, desc in sections:
