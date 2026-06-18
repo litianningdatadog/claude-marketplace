@@ -72,3 +72,39 @@ Verify: confirm frontmatter is valid YAML and `wc -l CLAUDE.md` is now under 200
 
 Omitting `paths` means the file loads in all contexts — only omit for truly universal
 additions that don't belong in root `CLAUDE.md` for other reasons.
+
+---
+
+## Stacked PR / Cascade Rebase Procedure
+
+**Trigger:** `git_workflow_errors` count ≥ 2, or a stale-remote-ref correction observed
+in a session that does stacked-PR rebase cascades.
+
+**Why this matters:** In a single compound command that updates multiple stacked branches
+and pushes them all at the end, `origin/<branch>` is a remote tracking ref that is stale
+until after `git push`. If a later step in the pipeline resets to `origin/<branch>` (the
+branch updated by an earlier step), it silently picks up the OLD commit, placing the next
+branch on the wrong base. The result: the PR's "Files changed" tab shows all changes from
+all ancestors instead of just the incremental diff.
+
+**CLAUDE.md procedure to generate:**
+
+```markdown
+## Cascading rebases on stacked branches
+
+When cascading a rebase across stacked PRs in a single command (reset + cherry-pick + push),
+always reference the **local** branch name, not the `origin/` remote tracking ref:
+
+# CORRECT — local ref is always current
+git reset --hard tianning.li/log-capture-2-plugin
+
+# WRONG — remote tracking ref is stale until after push
+git reset --hard origin/tianning.li/log-capture-2-plugin
+
+`origin/<branch>` only updates on fetch/push. If you update a local branch and then
+immediately reference `origin/<branch>` in the same command (before pushing), you get
+the old commit, silently placing the next branch on top of a stale base.
+```
+
+Route to the project CLAUDE.md if the error is project-specific; global CLAUDE.md if the
+user does stacked PRs across multiple repos.

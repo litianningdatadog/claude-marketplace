@@ -41,6 +41,14 @@ For corrections: draft rules from the example + preceding_action pair.
 For missing_context: write stable facts that belong in CLAUDE.md.
 For automation_candidates: propose hooks or alias commands. Set target to "settings.json".
 
+For git_workflow_errors: these surface anti-patterns in multi-step git operations (stale
+remote tracking refs, bad cascade rebases, unexpected file counts in stacked PRs). Produce
+a CLAUDE.md *procedure block* — not just a one-liner rule — that documents the correct
+command pattern. For stacked-PR cascades, the key invariant is: in a single pipeline
+command, never reference `origin/<branch>` for a branch updated earlier in the same
+pipeline (the remote tracking ref is stale until after push). Use the local branch name
+instead. Set target to "CLAUDE.md" and scope to "project" if top_project is set.
+
 For hook_errors (exit=127, unresolved ${CLAUDE_PLUGIN_ROOT}, etc.): these are hook
 configuration failures, NOT candidates for CLAUDE.md rules. Always set target to
 "hook-doctor" and proposed_rule to: "Run /hook-doctor to scan all hook configs for
@@ -93,6 +101,7 @@ def build_digest(findings: dict) -> str:
         ("Missing Context (re-explained each session)", "missing_context"),
         ("Slow Start (per-session orientation)", "slow_start_context"),
         ("Automation Candidates", "automation_candidates"),
+        ("Git Workflow Errors (stale refs, bad cascades, wrong base)", "git_workflow_errors"),
     ]
     for title, key in sections:
         groups = findings.get(key, [])

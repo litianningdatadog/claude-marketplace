@@ -12,7 +12,7 @@ automation candidates, and failing hooks — then proposes and applies concrete 
 Pipeline: **analyze + score files → synthesize rules → report → plan → act → verify → (opt-in) Karpathy merge**.
 Phase 1 runs three checks: a terminal-title setup check, `analyze_conversations.py` scanning
 transcripts for friction patterns (corrections, missing context, tool-call failures, automation
-candidates), and `score_efficiency.py` scoring your `CLAUDE.md` / `MEMORY.md` on a 0.0–1.0
+candidates, git workflow errors), and `score_efficiency.py` scoring your `CLAUDE.md` / `MEMORY.md` on a 0.0–1.0
 efficiency scale (files ≥ 5000 lines are flagged as Critical Context Blockers). `synthesize_findings.py`
 then pipes the findings through the Claude CLI to produce pre-drafted CLAUDE.md rules ranked by
 estimated token savings — skipping the manual Phase 2 synthesis step when it succeeds. Rules are
@@ -110,8 +110,11 @@ Files scoring 0.0 are treated as **High Impact** in the Phase 3 report. Recipe B
 
 ### Output categories
 
-`corrections`, `missing_context`, `slow_start_context`, and `automation_candidates` are
-each a list of groups sorted by frequency. Each group carries:
+`corrections`, `missing_context`, `slow_start_context`, `automation_candidates`, and
+`git_workflow_errors` are each a list of groups sorted by frequency. `git_workflow_errors`
+surfaces anti-patterns in multi-step git operations: stale `origin/<branch>` refs in cascade
+rebases, PRs showing unexpected file counts, out-of-date base branches, and corrective
+force-push loops. Each group carries:
 
 | Field | Meaning |
 |-------|---------|
